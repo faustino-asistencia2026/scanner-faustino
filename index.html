@@ -58,6 +58,7 @@ body { background:#0d0d0d; color:#f0f0f0; font-family:Arial,sans-serif; height:1
 
 <div id="loginScreen">
 
+  <div style="text-align:center;margin-bottom:16px"><img src="https://res.cloudinary.com/dptysw4k8/image/upload/v1775414482/LOGO_ULTIMO_OK_au7lf1.png" alt="Logo" style="width:90px;height:90px;object-fit:contain;border-radius:50%;background:#fff;padding:6px;box-shadow:0 4px 16px rgba(0,0,0,0.3)"></div>
   <div class="logoTitle" style="font-size:32px;letter-spacing:2px">ASIST QR</div>
   <div class="logoSub">I.E.P. Faustino Sanchez Carrion - Miraflores - Ayacucho</div>
   <div class="loginBox">
@@ -256,6 +257,9 @@ function onQRDetected(texto){
   ULTIMO_ID = texto;
   ULTIMO_TIME = now;
   PROCESANDO = true;
+
+  // Eliminar ceros a la izquierda (ej: 0001 → 1, 0124 → 124)
+  texto = String(parseInt(texto, 10) || texto).trim();
 
   // 1. Calcular estado LOCALMENTE - inmediato
   var estadoLocal = calcularEstadoLocal();
