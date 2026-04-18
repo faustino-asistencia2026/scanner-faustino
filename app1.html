@@ -485,23 +485,35 @@ function renderTablaAsistencia(registros, grado, seccion, fecha) {
     return;
   }
 
-  // Calcular dias desde inicio hasta hoy
-  var fechaInicio = new Date('2026-04-17');
-  var fechaHoy = new Date();
-  var diasMostrar = [];
-  var d = new Date(fechaInicio);
-  while (d <= fechaHoy) {
-    var dd = String(d.getDate()).padStart(2,'0');
-    var mm = String(d.getMonth()+1).padStart(2,'0');
-    var yyyy = d.getFullYear();
-    diasMostrar.push({
-      label: dd+'/'+mm,
-      fecha: yyyy+'-'+mm+'-'+dd
+  // Calcular dias del mes actual desde inicio del sistema
+  var FECHA_INICIO = '2026-04-17';
+  var hoy = new Date();
+  var hoyStr = hoy.getFullYear()+'-'+String(hoy.getMonth()+1).padStart(2,'0')+'-'+String(hoy.getDate()).padStart(2,'0');
+  
+  // Generar todos los dias del mes
+  var partesFecha = fecha.split('-');
+  var anioMes = parseInt(partesFecha[0]);
+  var mesMes = parseInt(partesFecha[1]);
+  var diasEnMes = new Date(anioMes, mesMes, 0).getDate();
+  
+  var dias = [];
+  for (var d = 1; d <= diasEnMes; d++) {
+    var fechaDia = anioMes+'-'+String(mesMes).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    var diaSemana = new Date(fechaDia).getDay(); // 0=Dom, 6=Sab
+    dias.push({
+      num: d,
+      fecha: fechaDia,
+      esFinde: diaSemana === 0 || diaSemana === 6,
+      esFuturo: fechaDia > hoyStr,
+      esAnteriorInicio: fechaDia < FECHA_INICIO
     });
-    d.setDate(d.getDate()+1);
   }
 
-  // Estadisticas
+  // Nombre del mes
+  var meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var nombreMes = meses[mesMes] + ' ' + anioMes;
+
+  // Estadisticas del dia seleccionado
   var puntuales=0, tardes=0, faltas=0, justificados=0;
   registros.forEach(function(r){
     var e = (r.estado||'').toUpperCase();
@@ -519,36 +531,67 @@ function renderTablaAsistencia(registros, grado, seccion, fecha) {
     statCard(justificados,'Justificados','azul') +
     statCard(registros.length,'Total','gris');
 
-  // Tabla con columnas de dias
+  // Tabla
   var html = '<div style="overflow-x:auto"><table class="repTable">';
-  html += '<thead><tr>';
-  html += '<th style="width:30px">N°</th>';
-  html += '<th class="th-nombre" style="min-width:180px">Apellidos y Nombres</th>';
-  diasMostrar.forEach(function(d){
-    html += '<th style="min-width:32px">'+d.label+'</th>';
+  
+  // Fila 1: MES
+  html += '<thead>';
+  html += '<tr><th colspan="2" style="text-align:left;font-size:15px">'+nombreMes+'</th>';
+  dias.forEach(function(d) {
+    var bg = d.esFinde ? '#9e9e9e' : '#1a237e';
+    html += '<th style="background:'+bg+'">'+d.num+'</th>';
   });
   html += '<th style="background:#2e7d32">P</th>';
   html += '<th style="background:#e65100">T</th>';
   html += '<th style="background:#c62828">F</th>';
   html += '<th style="background:#1565c0">J</th>';
+  html += '</tr>';
+
+  // Fila encabezado nombres
+  html += '<tr>';
+  html += '<th style="width:30px">N°</th>';
+  html += '<th class="th-nombre">Apellidos y Nombres</th>';
+  var diasSemana = ['D','L','M','X','J','V','S'];
+  dias.forEach(function(d) {
+    var diaSem = new Date(d.fecha).getDay();
+    var bg = d.esFinde ? '#bdbdbd' : '#3949ab';
+    html += '<th style="background:'+bg+';font-size:10px">'+diasSemana[diaSem]+'</th>';
+  });
+  html += '<th></th><th></th><th></th><th></th>';
   html += '</tr></thead><tbody>';
 
+  // Filas de estudiantes
   registros.forEach(function(r, i) {
     html += '<tr>';
     html += '<td>'+(i+1)+'</td>';
     html += '<td class="td-nombre">'+r.nombre+'</td>';
 
     var totP=0, totT=0, totF=0, totJ=0;
-    diasMostrar.forEach(function(dia) {
-      var estado = r.historial ? (r.historial[dia.fecha] || 'F') : 
-                   (dia.fecha === fecha ? (r.estado||'F') : 'F');
-      // Solo mostrar F si la fecha ya paso
-      if (dia.fecha > fecha) estado = '---';
-      var cls = estado==='PUNTUAL'||estado==='P' ? 'cel-P' :
-                estado==='TARDE'||estado==='T' ? 'cel-T' :
-                estado==='FALTA'||estado==='F' ? 'cel-F' :
-                estado==='JUSTIFICADO'||estado==='J' ? 'cel-J' : 'cel-vacio';
-      var letra = estado==='PUNTUAL'?'P':estado==='TARDE'?'T':estado==='FALTA'?'F':estado==='JUSTIFICADO'?'J':'-';
+    dias.forEach(function(dia) {
+      if (dia.esFinde) {
+        html += '<td style="background:#eeeeee">-</td>';
+        return;
+      }
+      if (dia.esAnteriorInicio) {
+        html += '<td style="background:#f5f5f5"></td>';
+        return;
+      }
+      if (dia.esFuturo) {
+        html += '<td style="background:#fafafa;color:#ccc">·</td>';
+        return;
+      }
+      // Dia pasado - buscar en historial o usar estado del dia seleccionado
+      var estado = '---';
+      if (r.historial && r.historial[dia.fecha]) {
+        estado = r.historial[dia.fecha];
+      } else if (dia.fecha === fecha) {
+        estado = (r.estado||'FALTA').charAt(0);
+      } else {
+        estado = 'F'; // falta por defecto para dias pasados sin registro
+      }
+      
+      var letra = estado==='PUNTUAL'?'P':estado==='TARDE'?'T':estado==='FALTA'||estado==='F'?'F':estado==='JUSTIFICADO'?'J':estado.charAt(0);
+      var cls = letra==='P'?'cel-P':letra==='T'?'cel-T':letra==='F'?'cel-F':letra==='J'?'cel-J':'cel-vacio';
       if(letra==='P') totP++;
       else if(letra==='T') totT++;
       else if(letra==='F') totF++;
