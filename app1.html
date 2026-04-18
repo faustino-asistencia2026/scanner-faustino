@@ -174,8 +174,10 @@ tr:hover td { background:#f9f9ff; }
 
     <!-- MODULO 1: ASISTENCIA -->
     <div id="mod-asistencia">
+
+      <!-- SECCION 1: POR AULA -->
       <div class="card">
-        <div class="cardTitle">📋 Registro de Asistencia</div>
+        <div class="cardTitle">🏫 Asistencia por Aula</div>
         <div class="filtros">
           <select class="selectField" id="filtGrado">
             <option value="">-- Grado --</option>
@@ -189,18 +191,32 @@ tr:hover td { background:#f9f9ff; }
           </select>
           <input type="date" class="selectField" id="filtFecha">
           <button class="btnBuscar" onclick="cargarAsistencia()">🔍 Ver</button>
-          <button class="btnSecundario" onclick="verMes()">📅 Ver Mes</button>
-        </div>
-        <!-- Busqueda individual por QR -->
-        <div id="qrAsistenciaWrap" style="margin-bottom:16px">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-            <span style="font-size:13px;color:#666">Escanear QR para ver ficha individual:</span>
-            <button class="btnSecundario" onclick="toggleQRAsistencia()" id="btnToggleQR">📷 Activar QR</button>
-          </div>
-          <div id="qrReaderAsistencia" style="display:none;max-width:350px"></div>
         </div>
         <div id="statsAsistencia" class="statsGrid" style="display:none"></div>
         <div id="tablaAsistencia" class="tablaWrap"></div>
+      </div>
+
+      <!-- SECCION 2: POR ESTUDIANTE -->
+      <div class="card">
+        <div class="cardTitle">👤 Asistencia por Estudiante</div>
+
+        <!-- Buscar por ID - solo Admin y SuperAdmin -->
+        <div id="asistBuscarId" style="display:none;margin-bottom:12px">
+          <div class="filtros">
+            <input type="number" class="selectField" id="asistId" placeholder="ID del estudiante">
+            <button class="btnBuscar" onclick="buscarAsistenciaEstudiante()">🔍 Buscar</button>
+          </div>
+        </div>
+
+        <!-- Buscar por QR - todos -->
+        <div id="asistBuscarQR">
+          <div class="alert alert-info" style="margin-bottom:8px">
+            Escanea el QR del estudiante para ver su historial
+          </div>
+          <div id="qrReaderAsistEst" style="width:100%;max-width:400px;min-height:250px;background:#000;border-radius:8px;margin:0 auto"></div>
+        </div>
+
+        <div id="fichaAsistEstudiante" style="margin-top:16px"></div>
       </div>
     </div>
 
@@ -398,6 +414,8 @@ function aplicarPermisosPorRol() {
     if (buscarId) buscarId.style.display = 'block';
     var justifId = document.getElementById('justifBuscarId');
     if (justifId) justifId.style.display = 'block';
+    var asistId = document.getElementById('asistBuscarId');
+    if (asistId) asistId.style.display = 'block';
   }
   // Solo admin, superadmin y auxiliar pueden justificar
   if (!['SUPER_ADMIN','ADMINISTRADOR','AUXILIAR'].includes(rol)) {
@@ -420,10 +438,90 @@ function mostrarModulo(nombre, btn) {
   } else if (nombre === 'justificaciones') {
     setTimeout(function(){ pararQRs(); iniciarQRJustif(); }, 300);
   } else if (nombre === 'asistencia') {
-    setTimeout(function(){ pararQRs(); iniciarQRAsistencia(); }, 300);
+    setTimeout(function(){ pararQRs(); iniciarQRAsistEst(); }, 300);
   } else {
     pararQRs();
   }
+}
+
+function iniciarQRAsistEst() {
+  try {
+    if (qrAsist) { try{qrAsist.stop();}catch(e){} qrAsist=null; }
+    qrAsist = new Html5Qrcode("qrReaderAsistEst");
+    Html5Qrcode.getCameras().then(function(cameras) {
+      if (!cameras || cameras.length === 0) return;
+      qrAsist.start(cameras[0].id,
+        {fps:15, qrbox:function(w,h){return {width:Math.floor(w*0.8),height:Math.floor(h*0.8)};}},
+        function(texto) {
+          qrAsist.stop(); qrAsist = null;
+          buscarAsistenciaEstudianteConId(texto.trim());
+        },
+        function(){}
+      ).catch(function(){});
+    }).catch(function(){});
+  } catch(e) {}
+}
+
+function buscarAsistenciaEstudiante() {
+  var id = document.getElementById('asistId').value.trim();
+  if (!id) { alert('Ingresa el ID'); return; }
+  buscarAsistenciaEstudianteConId(id);
+}
+
+function buscarAsistenciaEstudianteConId(id) {
+  document.getElementById('fichaAsistEstudiante').innerHTML = '<div class="loading"><div class="spinner"></div><br>Buscando...</div>';
+  api('login', {usuario: SESSION.usuario, clave: SESSION.clave})
+    .then(function(lr) {
+      if (lr.ok) SESSION.token = lr.token;
+      // Obtener reporte del mes actual
+      var hoy = new Date();
+      var p = new URLSearchParams({
+        action: 'obtenerReporteRango',
+        token: SESSION.token,
+        idEstudiante: id,
+        fechaInicio: '2026-04-17',
+        fechaFin: hoy.getFullYear()+'-'+String(hoy.getMonth()+1).padStart(2,'0')+'-'+String(hoy.getDate()).padStart(2,'0')
+      });
+      return fetch(WEBAPP_URL+'?'+p.toString()).then(function(r){ return r.json(); });
+    })
+    .then(function(res) {
+      if (!res.ok) {
+        document.getElementById('fichaAsistEstudiante').innerHTML =
+          '<div class="alert alert-error">'+res.mensaje+'</div>'+
+          '<button class="btnBuscar" style="margin-top:8px" onclick="nuevaBusquedaAsistEst()">🔍 Nueva Busqueda</button>';
+        return;
+      }
+      var e = res.estudiante;
+      var r = res.resumen;
+      var html = '<div class="fichaGrid" style="margin-bottom:12px">'+
+        fichaItem('Nombre', e.nombre)+
+        fichaItem('Grado', e.grado+' '+e.seccion)+
+      '</div>';
+      html += '<div class="statsGrid" style="margin-bottom:12px">'+
+        statCard(r.puntuales,'Puntuales','verde')+
+        statCard(r.tardanzas,'Tardanzas','naranja')+
+        statCard(r.faltas,'Faltas','rojo')+
+      '</div>';
+      if (res.registros && res.registros.length > 0) {
+        html += '<table class="repTable"><thead><tr><th>Fecha</th><th>Hora</th><th>Estado</th></tr></thead><tbody>';
+        res.registros.forEach(function(reg) {
+          var cls = (reg.estado||'').toUpperCase()==='PUNTUAL'?'cel-P':(reg.estado||'').toUpperCase()==='TARDE'?'cel-T':'cel-F';
+          html += '<tr><td>'+reg.fecha+'</td><td>'+reg.horaEntrada+'</td><td class="'+cls+'">'+reg.estado+'</td></tr>';
+        });
+        html += '</tbody></table>';
+      }
+      html += '<div style="margin-top:12px"><button class="btnBuscar" onclick="nuevaBusquedaAsistEst()">🔍 Nueva Busqueda</button></div>';
+      document.getElementById('fichaAsistEstudiante').innerHTML = html;
+    })
+    .catch(function() {
+      document.getElementById('fichaAsistEstudiante').innerHTML = '<div class="alert alert-error">Error</div>';
+    });
+}
+
+function nuevaBusquedaAsistEst() {
+  document.getElementById('fichaAsistEstudiante').innerHTML = '';
+  document.getElementById('asistId').value = '';
+  setTimeout(function(){ iniciarQRAsistEst(); }, 300);
 }
 
 function nuevaBusquedaEstudiante() {
