@@ -298,10 +298,12 @@ tr:hover td { background:#f9f9ff; }
           </select>
           <input type="month" class="selectField" id="repMes">
           <button class="btnBuscar" onclick="generarReporteMensual()">📊 Ver Registro</button>
-          <button class="btnSecundario" onclick="imprimirReporte()">🖨️ PDF</button>
-          <button class="btnSecundario" onclick="descargarExcel()">📥 Excel</button>
         </div>
         <div id="repMensual" style="overflow-x:auto"></div>
+        <div id="repBotones" style="display:none;margin-top:12px;gap:8px;display:flex">
+          <button class="btnSecundario" onclick="imprimirReporte()">🖨️ Imprimir PDF</button>
+          <button class="btnSecundario" onclick="descargarExcel()">📥 Descargar Excel</button>
+        </div>
       </div>
       <!-- REPORTE INDIVIDUAL -->
       <div class="card">
@@ -478,9 +480,25 @@ function renderTablaAsistencia(registros, grado, seccion, fecha) {
   var stats = document.getElementById('statsAsistencia');
 
   if (!registros || registros.length === 0) {
-    cont.innerHTML = '<div class="alert alert-info">No hay registros para esta fecha y seccion.</div>';
+    cont.innerHTML = '<div class="alert alert-info">No hay estudiantes en esta seccion.</div>';
     stats.style.display = 'none';
     return;
+  }
+
+  // Calcular dias desde inicio hasta hoy
+  var fechaInicio = new Date('2026-04-17');
+  var fechaHoy = new Date();
+  var diasMostrar = [];
+  var d = new Date(fechaInicio);
+  while (d <= fechaHoy) {
+    var dd = String(d.getDate()).padStart(2,'0');
+    var mm = String(d.getMonth()+1).padStart(2,'0');
+    var yyyy = d.getFullYear();
+    diasMostrar.push({
+      label: dd+'/'+mm,
+      fecha: yyyy+'-'+mm+'-'+dd
+    });
+    d.setDate(d.getDate()+1);
   }
 
   // Estadisticas
@@ -501,21 +519,54 @@ function renderTablaAsistencia(registros, grado, seccion, fecha) {
     statCard(justificados,'Justificados','azul') +
     statCard(registros.length,'Total','gris');
 
-  // Tabla
-  var html = '<table><thead><tr><th>N°</th><th>Nombre</th><th>Entrada</th><th>Salida</th><th>Estado</th></tr></thead><tbody>';
-  registros.forEach(function(r, i) {
-    var badge = badgeEstado(r.estado);
-    html += '<tr style="background:'+colorFila(r.estado)+'">' +
-      '<td>'+(i+1)+'</td>' +
-      '<td><b>'+r.nombre+'</b></td>' +
-      '<td>'+(r.horaEntrada||'---')+'</td>' +
-      '<td>'+(r.horaSalida||'---')+'</td>' +
-      '<td>'+badge+'</td>' +
-      '</tr>';
+  // Tabla con columnas de dias
+  var html = '<div style="overflow-x:auto"><table class="repTable">';
+  html += '<thead><tr>';
+  html += '<th style="width:30px">N°</th>';
+  html += '<th class="th-nombre" style="min-width:180px">Apellidos y Nombres</th>';
+  diasMostrar.forEach(function(d){
+    html += '<th style="min-width:32px">'+d.label+'</th>';
   });
-  html += '</tbody></table>';
+  html += '<th style="background:#2e7d32">P</th>';
+  html += '<th style="background:#e65100">T</th>';
+  html += '<th style="background:#c62828">F</th>';
+  html += '<th style="background:#1565c0">J</th>';
+  html += '</tr></thead><tbody>';
+
+  registros.forEach(function(r, i) {
+    html += '<tr>';
+    html += '<td>'+(i+1)+'</td>';
+    html += '<td class="td-nombre">'+r.nombre+'</td>';
+
+    var totP=0, totT=0, totF=0, totJ=0;
+    diasMostrar.forEach(function(dia) {
+      var estado = r.historial ? (r.historial[dia.fecha] || 'F') : 
+                   (dia.fecha === fecha ? (r.estado||'F') : 'F');
+      // Solo mostrar F si la fecha ya paso
+      if (dia.fecha > fecha) estado = '---';
+      var cls = estado==='PUNTUAL'||estado==='P' ? 'cel-P' :
+                estado==='TARDE'||estado==='T' ? 'cel-T' :
+                estado==='FALTA'||estado==='F' ? 'cel-F' :
+                estado==='JUSTIFICADO'||estado==='J' ? 'cel-J' : 'cel-vacio';
+      var letra = estado==='PUNTUAL'?'P':estado==='TARDE'?'T':estado==='FALTA'?'F':estado==='JUSTIFICADO'?'J':'-';
+      if(letra==='P') totP++;
+      else if(letra==='T') totT++;
+      else if(letra==='F') totF++;
+      else if(letra==='J') totJ++;
+      html += '<td class="'+cls+'">'+letra+'</td>';
+    });
+
+    html += '<td style="background:#e8f5e9;font-weight:700;color:#2e7d32">'+totP+'</td>';
+    html += '<td style="background:#fff3e0;font-weight:700;color:#e65100">'+totT+'</td>';
+    html += '<td style="background:#ffebee;font-weight:700;color:#c62828">'+totF+'</td>';
+    html += '<td style="background:#e3f2fd;font-weight:700;color:#1565c0">'+totJ+'</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
   cont.innerHTML = html;
 }
+
 
 function statCard(num, label, color) {
   return '<div class="statCard '+color+'"><div class="statNum">'+num+'</div><div class="statLabel">'+label+'</div></div>';
@@ -767,6 +818,7 @@ function renderReporteMensual(data) {
   });
 
   document.getElementById('repMensual').innerHTML = html;
+  document.getElementById('repBotones').style.display = 'flex';
 }
 
 // REPORTE INDIVIDUAL
