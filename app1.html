@@ -651,7 +651,8 @@ function renderTablaAsistencia(registros, grado, seccion, fecha) {
   html += '<th class="th-nombre">Apellidos y Nombres</th>';
   var diasSemana = ['D','L','M','X','J','V','S'];
   dias.forEach(function(d) {
-    var diaSem = new Date(d.fecha).getDay();
+    var partesDia2 = d.fecha.split('-');
+    var diaSem = new Date(parseInt(partesDia2[0]), parseInt(partesDia2[1])-1, parseInt(partesDia2[2])).getDay();
     var bg = d.esFinde ? '#bdbdbd' : '#3949ab';
     html += '<th style="background:'+bg+';font-size:10px">'+diasSemana[diaSem]+'</th>';
   });
