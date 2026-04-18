@@ -212,7 +212,7 @@ tr:hover td { background:#f9f9ff; }
           <div class="alert alert-info" style="margin-bottom:8px">
             Escanea el QR del estudiante para ver su historial
           </div>
-          <div id="qrReaderAsistEst" style="width:100%;max-width:400px;min-height:250px;background:#000;border-radius:8px;margin:0 auto"></div>
+          <div id="qrReaderAsistEst" style="width:100%;max-width:500px;min-height:300px;background:#111;border-radius:8px;margin:0 auto;display:block"></div>
         </div>
 
         <div id="fichaAsistEstudiante" style="margin-top:16px"></div>
@@ -650,7 +650,7 @@ function renderTablaAsistencia(registros, grado, seccion, fecha) {
   html += '<tr>';
   html += '<th style="width:30px">N°</th>';
   html += '<th class="th-nombre">Apellidos y Nombres</th>';
-  var diasSemana = ['D','L','M','X','J','V','S'];
+  var diasSemana = ['D','L','M','M','J','V','S'];
   dias.forEach(function(d) {
     var partesDia2 = d.fecha.split('-');
     var diaSem = new Date(parseInt(partesDia2[0]), parseInt(partesDia2[1])-1, parseInt(partesDia2[2])).getDay();
