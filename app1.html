@@ -96,6 +96,21 @@ tr:hover td { background:#f9f9ff; }
 .alert-error { background:#ffebee; color:#c62828; border:1px solid #ef9a9a; }
 .alert-info { background:#e3f2fd; color:#1565c0; border:1px solid #90caf9; }
 
+/* REPORTE MENSUAL */
+.repTable { border-collapse:collapse; font-size:12px; min-width:100%; }
+.repTable th { background:#1a237e; color:#fff; padding:6px 8px; text-align:center; white-space:nowrap; position:sticky; top:0; }
+.repTable th.th-nombre { text-align:left; min-width:180px; }
+.repTable td { padding:5px 6px; border:1px solid #e0e0e0; text-align:center; white-space:nowrap; }
+.repTable td.td-nombre { text-align:left; font-weight:600; }
+.repTable tr:hover td { background:#f5f7ff !important; }
+.cel-P { background:#e8f5e9; color:#2e7d32; font-weight:700; }
+.cel-T { background:#fff3e0; color:#e65100; font-weight:700; }
+.cel-F { background:#ffebee; color:#c62828; font-weight:700; }
+.cel-J { background:#e3f2fd; color:#1565c0; font-weight:700; }
+.cel-vacio { background:#f5f5f5; color:#999; }
+.rep-seccion-title { background:#e8eaf6; color:#1a237e; font-weight:700; padding:10px; margin:16px 0 8px; border-radius:8px; font-size:14px; }
+.rep-totales td { background:#f5f7ff; font-weight:700; }
+
 /* RESPONSIVE */
 @media(max-width:600px) {
   .fichaGrid { grid-template-columns:1fr; }
@@ -272,33 +287,33 @@ tr:hover td { background:#f9f9ff; }
 
     <!-- MODULO 4: REPORTES -->
     <div id="mod-reportes" style="display:none">
+      <!-- REPORTE MENSUAL POR GRADO -->
       <div class="card">
-        <div class="cardTitle">📊 Reporte Individual (PDF)</div>
-        <div class="filtros">
-          <input type="number" class="selectField" id="repId" placeholder="ID estudiante">
-          <input type="date" class="selectField" id="repDesde">
-          <input type="date" class="selectField" id="repHasta">
-          <button class="btnBuscar" onclick="generarReportePDF()">📄 Generar PDF</button>
-        </div>
-        <div id="repIndividual"></div>
-      </div>
-      <div class="card">
-        <div class="cardTitle">📊 Reporte Mensual por Seccion</div>
+        <div class="cardTitle">📅 Registro de Asistencia Mensual</div>
         <div class="filtros">
           <select class="selectField" id="repGrado">
             <option value="">-- Grado --</option>
             <option>PRIMERO</option><option>SEGUNDO</option><option>TERCERO</option>
             <option>CUARTO</option><option>QUINTO</option>
           </select>
-          <select class="selectField" id="repSeccion">
-            <option value="">-- Seccion --</option>
-            <option>A</option><option>B</option><option>C</option><option>D</option>
-            <option>E</option><option>F</option>
-          </select>
           <input type="month" class="selectField" id="repMes">
-          <button class="btnBuscar" onclick="generarReporteExcel()">📊 Descargar Excel</button>
+          <button class="btnBuscar" onclick="generarReporteMensual()">📊 Ver Registro</button>
+          <button class="btnSecundario" onclick="imprimirReporte()">🖨️ PDF</button>
+          <button class="btnSecundario" onclick="descargarExcel()">📥 Excel</button>
         </div>
-        <div id="repMensual"></div>
+        <div id="repMensual" style="overflow-x:auto"></div>
+      </div>
+      <!-- REPORTE INDIVIDUAL -->
+      <div class="card">
+        <div class="cardTitle">👤 Reporte Individual</div>
+        <div class="filtros">
+          <input type="number" class="selectField" id="repId" placeholder="ID estudiante">
+          <input type="date" class="selectField" id="repDesde">
+          <input type="date" class="selectField" id="repHasta">
+          <button class="btnBuscar" onclick="generarReporteIndividual()">📄 Ver Reporte</button>
+          <button class="btnSecundario" onclick="imprimirReporte()">🖨️ Imprimir</button>
+        </div>
+        <div id="repIndividual"></div>
       </div>
     </div>
 
@@ -670,17 +685,102 @@ function fichaItem(label, value) {
 }
 
 // REPORTES
-function generarReportePDF() {
+// REPORTE MENSUAL
+function generarReporteMensual() {
+  var grado = document.getElementById('repGrado').value;
+  var mes = document.getElementById('repMes').value;
+  if (!grado || !mes) { alert('Selecciona grado y mes'); return; }
+  var partes = mes.split('-');
+  var anio = partes[0];
+  var mesNum = partes[1];
+  document.getElementById('repMensual').innerHTML = '<div class="loading"><div class="spinner"></div><br>Generando reporte...</div>';
+
+  api('login', {usuario: SESSION.usuario, clave: SESSION.clave})
+    .then(function(lr) {
+      if (lr.ok) SESSION.token = lr.token;
+      var p = new URLSearchParams({action:'obtenerReporteMensual', token:SESSION.token, grado:grado, anio:anio, mes:mesNum});
+      return fetch(WEBAPP_URL+'?'+p.toString()).then(function(r){ return r.json(); });
+    })
+    .then(function(res) {
+      if (!res.ok) {
+        document.getElementById('repMensual').innerHTML = '<div class="alert alert-error">'+res.mensaje+'</div>';
+        return;
+      }
+      renderReporteMensual(res);
+    })
+    .catch(function(err) {
+      document.getElementById('repMensual').innerHTML = '<div class="alert alert-error">Error al cargar reporte</div>';
+    });
+}
+
+function renderReporteMensual(data) {
+  var meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var html = '<div style="margin-bottom:16px"><b style="font-size:16px;color:#1a237e">'+data.grado+' — '+meses[parseInt(data.mes)]+' '+data.anio+'</b></div>';
+
+  // Dias del mes como encabezados
+  var dias = data.fechas.map(function(f){ return f.split('-')[2]; });
+
+  data.secciones.forEach(function(sec) {
+    if (!sec.estudiantes.length) return;
+    html += '<div class="rep-seccion-title">SECCIÓN '+sec.seccion+' — '+sec.total+' estudiantes</div>';
+    html += '<div style="overflow-x:auto;margin-bottom:16px"><table class="repTable">';
+    html += '<thead><tr>';
+    html += '<th style="width:30px">N°</th>';
+    html += '<th class="th-nombre">Apellidos y Nombres</th>';
+    dias.forEach(function(d){ html += '<th>'+d+'</th>'; });
+    html += '<th style="background:#2e7d32">P</th>';
+    html += '<th style="background:#e65100">T</th>';
+    html += '<th style="background:#c62828">F</th>';
+    html += '<th style="background:#1565c0">J</th>';
+    html += '</tr></thead><tbody>';
+
+    sec.estudiantes.forEach(function(est) {
+      html += '<tr>';
+      html += '<td>'+est.nro+'</td>';
+      html += '<td class="td-nombre">'+est.nombre+'</td>';
+      est.dias.forEach(function(d) {
+        var cls = d==='P'?'cel-P':d==='T'?'cel-T':d==='F'?'cel-F':d==='J'?'cel-J':'cel-vacio';
+        html += '<td class="'+cls+'">'+d+'</td>';
+      });
+      html += '<td style="background:#e8f5e9;font-weight:700;color:#2e7d32">'+est.totP+'</td>';
+      html += '<td style="background:#fff3e0;font-weight:700;color:#e65100">'+est.totT+'</td>';
+      html += '<td style="background:#ffebee;font-weight:700;color:#c62828">'+est.totF+'</td>';
+      html += '<td style="background:#e3f2fd;font-weight:700;color:#1565c0">'+est.totJ+'</td>';
+      html += '</tr>';
+    });
+
+    // Totales por dia
+    html += '<tr class="rep-totales"><td colspan="2" style="text-align:right">TOTALES:</td>';
+    dias.forEach(function(d, idx) {
+      var p=0,t=0,f=0,j=0;
+      sec.estudiantes.forEach(function(est) {
+        var val = est.dias[idx];
+        if(val==='P') p++;
+        else if(val==='T') t++;
+        else if(val==='F') f++;
+        else if(val==='J') j++;
+      });
+      html += '<td style="font-size:10px;padding:2px"><span style="color:#2e7d32">'+p+'</span><br><span style="color:#e65100">'+t+'</span><br><span style="color:#c62828">'+f+'</span></td>';
+    });
+    html += '<td></td><td></td><td></td><td></td></tr>';
+    html += '</tbody></table></div>';
+  });
+
+  document.getElementById('repMensual').innerHTML = html;
+}
+
+// REPORTE INDIVIDUAL
+function generarReporteIndividual() {
   var id = document.getElementById('repId').value.trim();
   var desde = document.getElementById('repDesde').value;
   var hasta = document.getElementById('repHasta').value;
   if (!id || !desde || !hasta) { alert('Completa todos los campos'); return; }
-  document.getElementById('repIndividual').innerHTML = '<div class="loading"><div class="spinner"></div><br>Generando reporte...</div>';
+  document.getElementById('repIndividual').innerHTML = '<div class="loading"><div class="spinner"></div><br>Generando...</div>';
 
   api('login', {usuario: SESSION.usuario, clave: SESSION.clave})
-    .then(function(loginRes) {
-      if (loginRes.ok) SESSION.token = loginRes.token;
-      var p = new URLSearchParams({action:'obtenerReporteEstudiante', token: SESSION.token, idEstudiante: id, fechaInicio: desde, fechaFin: hasta});
+    .then(function(lr) {
+      if (lr.ok) SESSION.token = lr.token;
+      var p = new URLSearchParams({action:'obtenerReporteRango', token:SESSION.token, idEstudiante:id, fechaInicio:desde, fechaFin:hasta});
       return fetch(WEBAPP_URL+'?'+p.toString()).then(function(r){ return r.json(); });
     })
     .then(function(res) {
@@ -688,42 +788,38 @@ function generarReportePDF() {
         document.getElementById('repIndividual').innerHTML = '<div class="alert alert-error">'+res.mensaje+'</div>';
         return;
       }
-      generarPDFHTML(res);
+      var e = res.estudiante;
+      var r = res.resumen;
+      var html = '<div style="margin-bottom:12px"><b>'+e.nombre+'</b> | '+e.grado+' '+e.seccion+'</div>';
+      html += '<div class="statsGrid" style="margin-bottom:16px">'+
+        statCard(r.puntuales,'Puntuales','verde')+
+        statCard(r.tardanzas,'Tardanzas','naranja')+
+        statCard(r.faltas,'Faltas','rojo')+
+      '</div>';
+      html += '<table class="repTable"><thead><tr><th>Fecha</th><th>Hora</th><th>Estado</th></tr></thead><tbody>';
+      res.registros.forEach(function(reg) {
+        var cls = reg.estado==='PUNTUAL'?'cel-P':reg.estado==='TARDE'?'cel-T':'cel-F';
+        html += '<tr><td>'+reg.fecha+'</td><td>'+reg.horaEntrada+'</td><td class="'+cls+'">'+reg.estado+'</td></tr>';
+      });
+      html += '</tbody></table>';
+      html += '<button class="btnSecundario" style="margin-top:12px" onclick="imprimirReporte()">🖨️ Imprimir</button>';
+      document.getElementById('repIndividual').innerHTML = html;
     })
-    .catch(function(){ document.getElementById('repIndividual').innerHTML = '<div class="alert alert-error">Error</div>'; });
+    .catch(function() {
+      document.getElementById('repIndividual').innerHTML = '<div class="alert alert-error">Error</div>';
+    });
 }
 
-function generarPDFHTML(data) {
-  var e = data.estudiante;
-  var r = data.resumen;
-  var registros = data.registros || [];
-  var html = '<div style="border:1px solid #ddd;border-radius:8px;padding:20px;margin-top:16px">' +
-    '<h3 style="color:#1a237e;margin-bottom:12px">Reporte de Asistencia</h3>' +
-    '<p><b>'+e.nombre+'</b> | '+e.grado+' '+e.seccion+' | DNI: '+(e.dni||'---')+'</p>' +
-    '<p style="color:#666;font-size:13px">Periodo: '+data.periodo.inicio+' al '+data.periodo.fin+'</p>' +
-    '<div class="statsGrid" style="margin:16px 0">'+
-      statCard(r.puntuales||0,'Puntuales','verde')+
-      statCard(r.tardanzas||0,'Tardanzas','naranja')+
-      statCard(r.faltas||0,'Faltas','rojo')+
-      statCard(r.totalJustificaciones||0,'Justificaciones','azul')+
-    '</div>';
-
-  if (registros.length > 0) {
-    html += '<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:12px">' +
-      '<thead><tr style="background:#f5f7ff"><th style="padding:8px;text-align:left">Fecha</th><th>Entrada</th><th>Salida</th><th>Estado</th></tr></thead><tbody>';
-    registros.forEach(function(r){
-      html += '<tr style="border-bottom:1px solid #eee;background:'+colorFila(r.estado)+'">' +
-        '<td style="padding:8px">'+r.fecha+'</td>' +
-        '<td style="padding:8px;text-align:center">'+(r.horaEntrada||'---')+'</td>' +
-        '<td style="padding:8px;text-align:center">'+(r.horaSalida||'---')+'</td>' +
-        '<td style="padding:8px;text-align:center">'+badgeEstado(r.estado)+'</td>' +
-        '</tr>';
-    });
-    html += '</tbody></table>';
-  }
-
-  html += '<button onclick="imprimirReporte()" class="btnPrimary" style="margin-top:16px;max-width:200px">🖨️ Imprimir / PDF</button></div>';
-  document.getElementById('repIndividual').innerHTML = html;
+// DESCARGAR EXCEL
+function descargarExcel() {
+  var contenido = document.getElementById('repMensual').innerHTML;
+  if (!contenido || contenido.indexOf('table') < 0) { alert('Genera el reporte primero'); return; }
+  var blob = new Blob(['﻿'+document.getElementById('repMensual').outerHTML], {type:'application/vnd.ms-excel'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'Reporte_Asistencia.xls';
+  a.click();
 }
 
 function imprimirReporte() { window.print(); }
