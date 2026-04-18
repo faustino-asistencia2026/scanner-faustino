@@ -509,7 +509,10 @@ function iniciarQRAsistEst() {
         {fps:15, qrbox:function(w,h){return {width:Math.floor(w*0.8),height:Math.floor(h*0.8)};}},
         function(texto) {
           qrAsist.stop(); qrAsist = null;
-          buscarAsistenciaEstudianteConId(texto.trim());
+          var id = texto.trim();
+          var campoId = document.getElementById('asistId');
+          if (campoId) campoId.value = id;
+          buscarAsistenciaEstudianteConId(id);
         },
         function(){}
       ).catch(function(){});
