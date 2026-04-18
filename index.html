@@ -232,9 +232,9 @@ function calcularEstadoLocal() {
   var totalMin = h * 60 + m;
   
   // Horarios (deben coincidir con CONFIG del Sheets)
-  var puntuaDesde = 22 * 60 + 30;  // 22:30 TEMPORAL PARA PRUEBA
-  var puntualHasta = 22 * 60 + 59; // 22:59 TEMPORAL PARA PRUEBA
-  var tardeHasta = 23 * 60 + 30;   // 23:30 TEMPORAL PARA PRUEBA
+  	var puntuaDesde = 7 * 60;       // 07:00
+	var puntualHasta = 7 * 60 + 35; // 07:35
+	var tardeHasta = 11 * 60;       // 11:00
 
   if (totalMin < puntuaDesde) return "FUERA_HORARIO";
   if (totalMin >= tardeHasta) return "FUERA_HORARIO";
