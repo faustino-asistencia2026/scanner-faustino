@@ -189,7 +189,6 @@ tr:hover td { background:#f9f9ff; }
             <option>A</option><option>B</option><option>C</option><option>D</option>
             <option>E</option><option>F</option>
           </select>
-          <input type="date" class="selectField" id="filtFecha">
           <button class="btnBuscar" onclick="cargarAsistencia()">🔍 Ver</button>
         </div>
         <div id="statsAsistencia" class="statsGrid" style="display:none"></div>
@@ -364,7 +363,6 @@ function apiConToken(accion, datos) {
 // Init
 window.onload = function() {
   var hoy = new Date().toISOString().split('T')[0];
-  document.getElementById('filtFecha').value = hoy;
   document.getElementById('repDesde').value = hoy;
   document.getElementById('repHasta').value = hoy;
   document.getElementById('repMes').value = hoy.substring(0,7);
@@ -548,8 +546,10 @@ function pararQRs() {
 function cargarAsistencia() {
   var grado = document.getElementById('filtGrado').value;
   var seccion = document.getElementById('filtSeccion').value;
-  var fecha = document.getElementById('filtFecha').value;
   if (!grado || !seccion) { alert('Selecciona grado y seccion'); return; }
+  // Usar fecha de hoy automaticamente
+  var hoy = new Date();
+  var fecha = hoy.getFullYear()+'-'+String(hoy.getMonth()+1).padStart(2,'0')+'-'+String(hoy.getDate()).padStart(2,'0');
   document.getElementById('tablaAsistencia').innerHTML = '<div class="loading"><div class="spinner"></div><br>Cargando...</div>';
   mostrarTablaAsistencia(grado, seccion, fecha);
 }
@@ -597,7 +597,8 @@ function renderTablaAsistencia(registros, grado, seccion, fecha) {
   var dias = [];
   for (var d = 1; d <= diasEnMes; d++) {
     var fechaDia = anioMes+'-'+String(mesMes).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-    var diaSemana = new Date(fechaDia).getDay(); // 0=Dom, 6=Sab
+    // Usar fecha local para evitar problema de zona horaria UTC
+    var diaSemana = new Date(anioMes, mesMes-1, d).getDay(); // 0=Dom, 6=Sab
     dias.push({
       num: d,
       fecha: fechaDia,
