@@ -174,48 +174,58 @@ tr:hover td { background:#f9f9ff; }
 
     <!-- MODULO 1: ASISTENCIA -->
     <div id="mod-asistencia">
-
-      <!-- SECCION 1: POR AULA -->
       <div class="card">
-        <div class="cardTitle">🏫 Asistencia por Aula</div>
-        <div class="filtros">
-          <select class="selectField" id="filtGrado">
-            <option value="">-- Grado --</option>
-            <option>PRIMERO</option><option>SEGUNDO</option><option>TERCERO</option>
-            <option>CUARTO</option><option>QUINTO</option>
-          </select>
-          <select class="selectField" id="filtSeccion">
-            <option value="">-- Seccion --</option>
-            <option>A</option><option>B</option><option>C</option><option>D</option>
-            <option>E</option><option>F</option>
-          </select>
-          <button class="btnBuscar" onclick="cargarAsistencia()">🔍 Ver</button>
+        <div class="cardTitle">📋 Registro de Asistencia</div>
+        
+        <!-- Pestañas -->
+        <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid #e0e0e0">
+          <button id="tabAula" onclick="cambiarTabAsist('aula')" 
+            style="padding:10px 20px;border:none;background:#1a237e;color:#fff;font-weight:700;cursor:pointer;border-radius:8px 8px 0 0;font-size:13px">
+            🏫 Por Aula
+          </button>
+          <button id="tabEst" onclick="cambiarTabAsist('estudiante')"
+            style="padding:10px 20px;border:none;background:#e0e0e0;color:#666;font-weight:700;cursor:pointer;border-radius:8px 8px 0 0;font-size:13px;margin-left:4px">
+            👤 Por Estudiante
+          </button>
         </div>
-        <div id="statsAsistencia" class="statsGrid" style="display:none"></div>
-        <div id="tablaAsistencia" class="tablaWrap"></div>
-      </div>
 
-      <!-- SECCION 2: POR ESTUDIANTE -->
-      <div class="card">
-        <div class="cardTitle">👤 Asistencia por Estudiante</div>
-
-        <!-- Buscar por ID - solo Admin y SuperAdmin -->
-        <div id="asistBuscarId" style="display:none;margin-bottom:12px">
+        <!-- TAB 1: POR AULA -->
+        <div id="tabContenidoAula">
           <div class="filtros">
-            <input type="number" class="selectField" id="asistId" placeholder="ID del estudiante">
-            <button class="btnBuscar" onclick="buscarAsistenciaEstudiante()">🔍 Buscar</button>
+            <select class="selectField" id="filtGrado">
+              <option value="">-- Grado --</option>
+              <option>PRIMERO</option><option>SEGUNDO</option><option>TERCERO</option>
+              <option>CUARTO</option><option>QUINTO</option>
+            </select>
+            <select class="selectField" id="filtSeccion">
+              <option value="">-- Seccion --</option>
+              <option>A</option><option>B</option><option>C</option><option>D</option>
+              <option>E</option><option>F</option>
+            </select>
+            <button class="btnBuscar" onclick="cargarAsistencia()">🔍 Ver</button>
           </div>
+          <div id="statsAsistencia" class="statsGrid" style="display:none"></div>
+          <div id="tablaAsistencia" class="tablaWrap"></div>
         </div>
 
-        <!-- Buscar por QR - todos -->
-        <div id="asistBuscarQR">
-          <div class="alert alert-info" style="margin-bottom:8px">
-            Escanea el QR del estudiante para ver su historial
+        <!-- TAB 2: POR ESTUDIANTE -->
+        <div id="tabContenidoEst" style="display:none">
+          <!-- Buscar por ID - solo Admin y SuperAdmin -->
+          <div id="asistBuscarId" style="display:none;margin-bottom:12px">
+            <div class="filtros">
+              <input type="number" class="selectField" id="asistId" placeholder="ID del estudiante">
+              <button class="btnBuscar" onclick="buscarAsistenciaEstudiante()">🔍 Buscar</button>
+            </div>
           </div>
-          <div id="qrReaderAsistEst" style="width:100%;max-width:500px;min-height:300px;background:#111;border-radius:8px;margin:0 auto;display:block"></div>
+          <!-- Buscar por QR -->
+          <div id="asistBuscarQR">
+            <div style="margin-bottom:8px;display:flex;gap:8px;align-items:center">
+              <button class="btnBuscar" onclick="activarQRAsistEst()" id="btnActivarQRAsist">📷 Activar Camara QR</button>
+            </div>
+            <div id="qrReaderAsistEst" style="width:100%;max-width:500px;min-height:0;background:#111;border-radius:8px;margin:0 auto;display:none"></div>
+          </div>
+          <div id="fichaAsistEstudiante" style="margin-top:16px"></div>
         </div>
-
-        <div id="fichaAsistEstudiante" style="margin-top:16px"></div>
       </div>
     </div>
 
@@ -436,10 +446,57 @@ function mostrarModulo(nombre, btn) {
   } else if (nombre === 'justificaciones') {
     setTimeout(function(){ pararQRs(); iniciarQRJustif(); }, 300);
   } else if (nombre === 'asistencia') {
-    setTimeout(function(){ pararQRs(); iniciarQRAsistEst(); }, 300);
+    pararQRs(); // solo detener, no iniciar automaticamente
   } else {
     pararQRs();
   }
+}
+
+function cambiarTabAsist(tab) {
+  var btnAula = document.getElementById('tabAula');
+  var btnEst = document.getElementById('tabEst');
+  var contAula = document.getElementById('tabContenidoAula');
+  var contEst = document.getElementById('tabContenidoEst');
+
+  if (tab === 'aula') {
+    // Detener camara si estaba activa
+    if (qrAsist) { try{qrAsist.stop();}catch(e){} qrAsist=null; }
+    var div = document.getElementById('qrReaderAsistEst');
+    if (div) { div.style.display='none'; div.style.minHeight='0'; }
+    var btn = document.getElementById('btnActivarQRAsist');
+    if (btn) btn.textContent = '📷 Activar Camara QR';
+
+    btnAula.style.background = '#1a237e';
+    btnAula.style.color = '#fff';
+    btnEst.style.background = '#e0e0e0';
+    btnEst.style.color = '#666';
+    contAula.style.display = 'block';
+    contEst.style.display = 'none';
+  } else {
+    btnEst.style.background = '#1a237e';
+    btnEst.style.color = '#fff';
+    btnAula.style.background = '#e0e0e0';
+    btnAula.style.color = '#666';
+    contEst.style.display = 'block';
+    contAula.style.display = 'none';
+  }
+}
+
+function activarQRAsistEst() {
+  var div = document.getElementById('qrReaderAsistEst');
+  var btn = document.getElementById('btnActivarQRAsist');
+  if (qrAsist) {
+    try{qrAsist.stop();}catch(e){}
+    qrAsist = null;
+    div.style.minHeight = '0';
+    div.style.display = 'none';
+    btn.textContent = '📷 Activar Camara QR';
+    return;
+  }
+  div.style.minHeight = '300px';
+  div.style.display = 'block';
+  btn.textContent = '⏹ Detener Camara';
+  iniciarQRAsistEst();
 }
 
 function iniciarQRAsistEst() {
