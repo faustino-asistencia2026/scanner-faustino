@@ -113,7 +113,7 @@ var ULTIMO_ID = null;
 var ULTIMO_TIME = 0;
 var TIMER_RES = null;
 
-var WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyNWxMcm42kLOQwzMfsAOFLa6BUIoeFs1SIz1Z9lsIS5bVrLxbOFoUGosPx3ScFe1prQQ/exec";
+var WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxp31nhEqGvlUH4Vs8iR5j9oyFziq9jJiX13paLMwheJMmfUb4BxXCP2ISagReVSwSRvw/exec";
 
 function playTone(f,t,d,g,dl){
   try{
@@ -232,9 +232,9 @@ function calcularEstadoLocal() {
   var totalMin = h * 60 + m;
   
   // Horarios (deben coincidir con CONFIG del Sheets)
-  	var puntuaDesde = 7 * 60;       // 07:00
-	var puntualHasta = 7 * 60 + 35; // 07:35
-	var tardeHasta = 11 * 60;       // 11:00
+  var puntuaDesde = 22 * 60 + 30;  // 22:30 TEMPORAL PARA PRUEBA
+  var puntualHasta = 22 * 60 + 59; // 22:59 TEMPORAL PARA PRUEBA
+  var tardeHasta = 23 * 60 + 30;   // 23:30 TEMPORAL PARA PRUEBA
 
   if (totalMin < puntuaDesde) return "FUERA_HORARIO";
   if (totalMin >= tardeHasta) return "FUERA_HORARIO";
