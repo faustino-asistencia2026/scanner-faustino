@@ -666,11 +666,30 @@ function cargarAsistencia() {
   var grado = document.getElementById('filtGrado').value;
   var seccion = document.getElementById('filtSeccion').value;
   if (!grado || !seccion) { alert('Selecciona grado y seccion'); return; }
-  // Usar fecha de hoy automaticamente
-  var hoy = new Date();
-  var fecha = hoy.getFullYear()+'-'+String(hoy.getMonth()+1).padStart(2,'0')+'-'+String(hoy.getDate()).padStart(2,'0');
   document.getElementById('tablaAsistencia').innerHTML = '<div class="loading"><div class="spinner"></div><br>Cargando...</div>';
-  mostrarTablaAsistencia(grado, seccion, fecha);
+  document.getElementById('statsAsistencia').style.display = 'none';
+
+  var hoy = new Date();
+  var anio = hoy.getFullYear();
+  var mes = hoy.getMonth()+1;
+
+  api('login', {usuario: SESSION.usuario, clave: SESSION.clave})
+    .then(function(lr) {
+      if (lr.ok) SESSION.token = lr.token;
+      var p = new URLSearchParams({action:'obtenerHistorialSeccion', token:SESSION.token,
+        grado:grado, seccion:seccion, anio:anio, mes:mes});
+      return fetch(WEBAPP_URL+'?'+p.toString()).then(function(r){ return r.json(); });
+    })
+    .then(function(res) {
+      if (!res.ok) {
+        document.getElementById('tablaAsistencia').innerHTML = '<div class="alert alert-error">'+res.mensaje+'</div>';
+        return;
+      }
+      renderHistorialAsistencia(res);
+    })
+    .catch(function(){
+      document.getElementById('tablaAsistencia').innerHTML = '<div class="alert alert-error">Error al cargar</div>';
+    });
 }
 
 function mostrarTablaAsistencia(grado, seccion, fecha) {
@@ -690,6 +709,62 @@ function mostrarTablaAsistencia(grado, seccion, fecha) {
     .catch(function(err) {
       document.getElementById('tablaAsistencia').innerHTML = '<div class="alert alert-error">Error al cargar datos</div>';
     });
+}
+
+function renderHistorialAsistencia(data) {
+  var cont = document.getElementById('tablaAsistencia');
+  var stats = document.getElementById('statsAsistencia');
+  var meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var nombreMes = meses[parseInt(data.mes)] + ' ' + data.anio;
+  var diasSemana = ['D','L','M','M','J','V','S'];
+
+  // Calcular dias con info de fin de semana
+  var dias = data.fechas.map(function(f) {
+    var p = f.split('-');
+    var diaSem = new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2])).getDay();
+    return { num: parseInt(p[2]), fecha: f, esFinde: diaSem===0||diaSem===6, diaSem: diaSem };
+  });
+
+  // Estadisticas globales
+  var totP=0,totT=0,totF=0,totJ=0;
+  data.estudiantes.forEach(function(e){ totP+=e.totP; totT+=e.totT; totF+=e.totF; totJ+=e.totJ; });
+  stats.style.display = 'grid';
+  stats.innerHTML =
+    statCard(totP,'Puntuales','verde')+statCard(totT,'Tardanzas','naranja')+
+    statCard(totF,'Faltas','rojo')+statCard(totJ,'Justificados','azul')+
+    statCard(data.estudiantes.length,'Total','gris');
+
+  var html = '<div style="overflow-x:auto"><table class="repTable"><thead>';
+  // Fila mes
+  html += '<tr><th colspan="2" style="text-align:left;font-size:14px">'+data.grado+' '+data.seccion+' — '+nombreMes+'</th>';
+  dias.forEach(function(d){
+    html += '<th style="background:'+(d.esFinde?'#9e9e9e':'#1a237e')+'">'+d.num+'</th>';
+  });
+  html += '<th style="background:#2e7d32">P</th><th style="background:#e65100">T</th><th style="background:#c62828">F</th><th style="background:#1565c0">J</th></tr>';
+  // Fila dias semana
+  html += '<tr><th></th><th></th>';
+  dias.forEach(function(d){
+    html += '<th style="background:'+(d.esFinde?'#bdbdbd':'#3949ab')+';font-size:10px">'+diasSemana[d.diaSem]+'</th>';
+  });
+  html += '<th></th><th></th><th></th><th></th></tr></thead><tbody>';
+
+  // Filas estudiantes
+  data.estudiantes.forEach(function(est) {
+    html += '<tr><td>'+est.nro+'</td><td class="td-nombre">'+est.nombre+'</td>';
+    est.dias.forEach(function(d, idx) {
+      if (dias[idx].esFinde) { html += '<td style="background:#eeeeee">-</td>'; return; }
+      if (d === '-') { html += '<td style="background:#fafafa;color:#ccc">·</td>'; return; }
+      var cls = d==='P'?'cel-P':d==='T'?'cel-T':d==='J'?'cel-J':'cel-F';
+      html += '<td class="'+cls+'">'+d+'</td>';
+    });
+    html += '<td style="background:#e8f5e9;font-weight:700;color:#2e7d32">'+est.totP+'</td>';
+    html += '<td style="background:#fff3e0;font-weight:700;color:#e65100">'+est.totT+'</td>';
+    html += '<td style="background:#ffebee;font-weight:700;color:#c62828">'+est.totF+'</td>';
+    html += '<td style="background:#e3f2fd;font-weight:700;color:#1565c0">'+est.totJ+'</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  cont.innerHTML = html;
 }
 
 function renderTablaAsistencia(registros, grado, seccion, fecha) {
