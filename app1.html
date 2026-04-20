@@ -374,7 +374,7 @@ var qrEst = null;
 var qrJustif_ = null;
 var qrAsist = null;
 var qrAsistActivo = false;
-var WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxDHjtfOWHBYPGZzxy8L6WTju8vTQDxVkK9YAIj04aAQ-0kJ5Qnno6oV1tRBjbL6P3xRA/exec";
+var WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxxAmrtVfjVWTT22KjIqBEmKEZ4gLY70qJP45vRBnyIi8k5-v6W9WUCkwg8B0yAF43f7w/exec";
 var ESTUDIANTE_JUSTIF = null;
 
 // Servidor
@@ -557,7 +557,7 @@ function buscarAsistenciaEstudianteConId(id) {
         action: 'obtenerReporteRango',
         token: SESSION.token,
         idEstudiante: id,
-        fechaInicio: '2026-04-17',
+        fechaInicio: '2026-04-20',
         fechaFin: hoy.getFullYear()+'-'+String(hoy.getMonth()+1).padStart(2,'0')+'-'+String(hoy.getDate()).padStart(2,'0')
       });
       return fetch(WEBAPP_URL+'?'+p.toString()).then(function(r){ return r.json(); });
@@ -778,7 +778,7 @@ function renderTablaAsistencia(registros, grado, seccion, fecha) {
   }
 
   // Calcular dias del mes desde inicio del sistema
-  var FECHA_INICIO = '2026-04-17';
+  var FECHA_INICIO = '2026-04-20';
   var hoy = new Date();
   var hoyStr = hoy.getFullYear()+'-'+String(hoy.getMonth()+1).padStart(2,'0')+'-'+String(hoy.getDate()).padStart(2,'0');
   var partesFecha = fecha.split('-');
@@ -1237,7 +1237,7 @@ function renderEstadisticas(res) {
   '</div>';
 
   // ACUMULADO DESDE INICIO
-  html += '<div style="margin-bottom:12px"><b style="color:#1a237e;font-size:15px">📊 Acumulado desde 17/04/2026</b></div>';
+  html += '<div style="margin-bottom:12px"><b style="color:#1a237e;font-size:15px">📊 Acumulado desde 20/04/2026</b></div>';
   html += '<div class="statsGrid" style="margin-bottom:20px">'+
     statCard(acumulado.totalRegistros||0,'Total Registros','azul')+
     statCard(acumulado.puntuales||0,'Puntuales','verde')+
