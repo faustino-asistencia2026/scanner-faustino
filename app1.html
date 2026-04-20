@@ -346,7 +346,23 @@ tr:hover td { background:#f9f9ff; }
 
     <!-- MODULO 5: ESTADISTICAS -->
     <div id="mod-estadisticas" style="display:none">
-      <div id="statsGenerales"></div>
+      <div class="card">
+        <div class="cardTitle">📈 Estadísticas Generales</div>
+        <div class="filtros">
+          <select class="selectField" id="statGrado">
+            <option value="">-- Todos los Grados --</option>
+            <option>PRIMERO</option><option>SEGUNDO</option><option>TERCERO</option>
+            <option>CUARTO</option><option>QUINTO</option>
+          </select>
+          <select class="selectField" id="statSeccion">
+            <option value="">-- Todas las Secciones --</option>
+            <option>A</option><option>B</option><option>C</option>
+            <option>D</option><option>E</option><option>F</option>
+          </select>
+          <button class="btnBuscar" onclick="cargarEstadisticas()">🔍 Ver</button>
+        </div>
+        <div id="statsGenerales"></div>
+      </div>
     </div>
 
   </div>
@@ -354,7 +370,7 @@ tr:hover td { background:#f9f9ff; }
 
 <script>
 var SESSION = null;
-var WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxp31nhEqGvlUH4Vs8iR5j9oyFziq9jJiX13paLMwheJMmfUb4BxXCP2ISagReVSwSRvw/exec";
+var WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxK1kRLhMZKTLEx21EwV7xAKhz8_455t1bWoAua23u61-QNR1Qy2STBufNbcLDQhVWHag/exec";
 var ESTUDIANTE_JUSTIF = null;
 
 // Servidor
@@ -643,22 +659,19 @@ function renderTablaAsistencia(registros, grado, seccion, fecha) {
     return;
   }
 
-  // Calcular dias del mes actual desde inicio del sistema
+  // Calcular dias del mes desde inicio del sistema
   var FECHA_INICIO = '2026-04-17';
   var hoy = new Date();
   var hoyStr = hoy.getFullYear()+'-'+String(hoy.getMonth()+1).padStart(2,'0')+'-'+String(hoy.getDate()).padStart(2,'0');
-  
-  // Generar todos los dias del mes
   var partesFecha = fecha.split('-');
   var anioMes = parseInt(partesFecha[0]);
   var mesMes = parseInt(partesFecha[1]);
   var diasEnMes = new Date(anioMes, mesMes, 0).getDate();
-  
+
   var dias = [];
   for (var d = 1; d <= diasEnMes; d++) {
     var fechaDia = anioMes+'-'+String(mesMes).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-    // Usar fecha local para evitar problema de zona horaria UTC
-    var diaSemana = new Date(anioMes, mesMes-1, d).getDay(); // 0=Dom, 6=Sab
+    var diaSemana = new Date(anioMes, mesMes-1, d).getDay();
     dias.push({
       num: d,
       fecha: fechaDia,
@@ -668,11 +681,10 @@ function renderTablaAsistencia(registros, grado, seccion, fecha) {
     });
   }
 
-  // Nombre del mes
   var meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   var nombreMes = meses[mesMes] + ' ' + anioMes;
 
-  // Estadisticas del dia seleccionado
+  // Estadisticas
   var puntuales=0, tardes=0, faltas=0, justificados=0;
   registros.forEach(function(r){
     var e = (r.estado||'').toUpperCase();
@@ -684,88 +696,70 @@ function renderTablaAsistencia(registros, grado, seccion, fecha) {
 
   stats.style.display = 'grid';
   stats.innerHTML =
-    statCard(puntuales,'Puntuales','verde') +
-    statCard(tardes,'Tardanzas','naranja') +
-    statCard(faltas,'Faltas','rojo') +
-    statCard(justificados,'Justificados','azul') +
+    statCard(puntuales,'Puntuales','verde')+
+    statCard(tardes,'Tardanzas','naranja')+
+    statCard(faltas,'Faltas','rojo')+
+    statCard(justificados,'Justificados','azul')+
     statCard(registros.length,'Total','gris');
 
-  // Tabla
+  // Tabla igual que reportes
   var html = '<div style="overflow-x:auto"><table class="repTable">';
-  
-  // Fila 1: MES
   html += '<thead>';
-  html += '<tr><th colspan="2" style="text-align:left;font-size:15px">'+nombreMes+'</th>';
-  dias.forEach(function(d) {
-    var bg = d.esFinde ? '#9e9e9e' : '#1a237e';
+  html += '<tr><th colspan="2" style="text-align:left;font-size:15px">'+grado+' '+seccion+' — '+nombreMes+'</th>';
+  dias.forEach(function(d){
+    var bg = d.esFinde ? '#9e9e9e' : d.esAnteriorInicio ? '#bdbdbd' : '#1a237e';
     html += '<th style="background:'+bg+'">'+d.num+'</th>';
   });
-  html += '<th style="background:#2e7d32">P</th>';
-  html += '<th style="background:#e65100">T</th>';
-  html += '<th style="background:#c62828">F</th>';
-  html += '<th style="background:#1565c0">J</th>';
+  html += '<th style="background:#2e7d32">P</th><th style="background:#e65100">T</th><th style="background:#c62828">F</th><th style="background:#1565c0">J</th>';
   html += '</tr>';
 
-  // Fila encabezado nombres
-  html += '<tr>';
-  html += '<th style="width:30px">N°</th>';
-  html += '<th class="th-nombre">Apellidos y Nombres</th>';
   var diasSemana = ['D','L','M','M','J','V','S'];
-  dias.forEach(function(d) {
-    var partesDia2 = d.fecha.split('-');
-    var diaSem = new Date(parseInt(partesDia2[0]), parseInt(partesDia2[1])-1, parseInt(partesDia2[2])).getDay();
-    var bg = d.esFinde ? '#bdbdbd' : '#3949ab';
+  html += '<tr><th></th><th></th>';
+  dias.forEach(function(d){
+    var diaSem = new Date(anioMes, mesMes-1, d.num).getDay();
+    var bg = d.esFinde ? '#bdbdbd' : d.esAnteriorInicio ? '#d0d0d0' : '#3949ab';
     html += '<th style="background:'+bg+';font-size:10px">'+diasSemana[diaSem]+'</th>';
   });
-  html += '<th></th><th></th><th></th><th></th>';
-  html += '</tr></thead><tbody>';
+  html += '<th></th><th></th><th></th><th></th></tr>';
+  html += '</thead><tbody>';
 
-  // Filas de estudiantes
   registros.forEach(function(r, i) {
-    html += '<tr>';
-    html += '<td>'+(i+1)+'</td>';
-    html += '<td class="td-nombre">'+r.nombre+'</td>';
-
-    var totP=0, totT=0, totF=0, totJ=0;
-    dias.forEach(function(dia) {
-      if (dia.esFinde) {
+    html += '<tr><td>'+(i+1)+'</td><td class="td-nombre">'+r.nombre+'</td>';
+    var totP=0,totT=0,totF=0,totJ=0;
+    dias.forEach(function(dia){
+      if (dia.esFinde || dia.esAnteriorInicio) {
         html += '<td style="background:#eeeeee">-</td>';
-        return;
-      }
-      if (dia.esAnteriorInicio) {
-        html += '<td style="background:#f5f5f5"></td>';
         return;
       }
       if (dia.esFuturo) {
         html += '<td style="background:#fafafa;color:#ccc">·</td>';
         return;
       }
-      // Dia pasado - buscar en historial o usar estado del dia seleccionado
       var estado = '---';
       if (r.historial && r.historial[dia.fecha]) {
         estado = r.historial[dia.fecha];
       } else if (dia.fecha === fecha) {
         estado = (r.estado||'FALTA').charAt(0);
+        if(r.estado==='PUNTUAL') estado='P';
+        else if(r.estado==='TARDE') estado='T';
+        else if(r.estado==='JUSTIFICADO') estado='J';
+        else estado='F';
       } else {
-        estado = 'F'; // falta por defecto para dias pasados sin registro
+        estado = 'F';
       }
-      
-      var letra = estado==='PUNTUAL'?'P':estado==='TARDE'?'T':estado==='FALTA'||estado==='F'?'F':estado==='JUSTIFICADO'?'J':estado.charAt(0);
-      var cls = letra==='P'?'cel-P':letra==='T'?'cel-T':letra==='F'?'cel-F':letra==='J'?'cel-J':'cel-vacio';
-      if(letra==='P') totP++;
-      else if(letra==='T') totT++;
-      else if(letra==='F') totF++;
-      else if(letra==='J') totJ++;
-      html += '<td class="'+cls+'">'+letra+'</td>';
+      var cls = estado==='P'?'cel-P':estado==='T'?'cel-T':estado==='J'?'cel-J':'cel-F';
+      if(estado==='P') totP++;
+      else if(estado==='T') totT++;
+      else if(estado==='J') totJ++;
+      else totF++;
+      html += '<td class="'+cls+'">'+estado+'</td>';
     });
-
     html += '<td style="background:#e8f5e9;font-weight:700;color:#2e7d32">'+totP+'</td>';
     html += '<td style="background:#fff3e0;font-weight:700;color:#e65100">'+totT+'</td>';
     html += '<td style="background:#ffebee;font-weight:700;color:#c62828">'+totF+'</td>';
     html += '<td style="background:#e3f2fd;font-weight:700;color:#1565c0">'+totJ+'</td>';
     html += '</tr>';
   });
-
   html += '</tbody></table></div>';
   cont.innerHTML = html;
 }
@@ -1085,12 +1079,14 @@ function generarReporteExcel() {
 
 // ESTADISTICAS
 function cargarEstadisticas() {
+  var grado = document.getElementById('statGrado') ? document.getElementById('statGrado').value : '';
+  var seccion = document.getElementById('statSeccion') ? document.getElementById('statSeccion').value : '';
   document.getElementById('statsGenerales').innerHTML = '<div class="loading"><div class="spinner"></div><br>Cargando estadisticas...</div>';
 
   api('login', {usuario: SESSION.usuario, clave: SESSION.clave})
     .then(function(loginRes) {
       if (loginRes.ok) SESSION.token = loginRes.token;
-      var p = new URLSearchParams({action:'obtenerEstadisticasDashboard', token: SESSION.token});
+      var p = new URLSearchParams({action:'obtenerEstadisticasDashboard', token: SESSION.token, grado: grado, seccion: seccion});
       return fetch(WEBAPP_URL+'?'+p.toString()).then(function(r){ return r.json(); });
     })
     .then(function(res) {
@@ -1104,112 +1100,88 @@ function cargarEstadisticas() {
 }
 
 function renderEstadisticas(res) {
-  var hoy = res.hoy || {};
-  var html =
-    '<div class="card">'+
-      '<div class="cardTitle">📈 Resumen de Hoy — '+res.fecha+'</div>'+
-      '<div class="statsGrid">'+
-        statCard(res.totalEstudiantes||0,'Total Estudiantes','azul')+
-        statCard(hoy.registrados||0,'Registrados','verde')+
-        statCard(hoy.puntuales||0,'Puntuales','verde')+
-        statCard(hoy.tardanzas||0,'Tardanzas','naranja')+
-        statCard(hoy.faltas||0,'Faltas','rojo')+
-        statCard(hoy.sinRegistro||0,'Sin Registro','gris')+
-      '</div>'+
-    '</div>'+
-    '<div class="card">'+
-      '<div class="cardTitle">⚠️ Alertas Pendientes</div>'+
-      '<div class="alert '+(res.alertasPendientes>0?'alert-error':'alert-success')+'">'+
-        (res.alertasPendientes>0 ?
-          '⚠️ Hay '+res.alertasPendientes+' alertas pendientes de enviar por WhatsApp' :
-          '✅ No hay alertas pendientes')+
-      '</div>'+
-    '</div>';
+  var hoy = res.fecha || new Date().toLocaleDateString('es-PE');
+  var hoy_data = res.hoy || {};
+  var acumulado = res.acumulado || {};
+  var porGrado = res.porGrado || [];
+
+  var html = '';
+
+  // RESUMEN DE HOY
+  html += '<div style="margin-bottom:16px"><b style="color:#1a237e;font-size:15px">📅 Hoy — '+hoy+'</b></div>';
+  html += '<div class="statsGrid" style="margin-bottom:20px">'+
+    statCard(res.totalEstudiantes||0,'Total Estudiantes','azul')+
+    statCard(hoy_data.puntuales||0,'Puntuales','verde')+
+    statCard(hoy_data.tardanzas||0,'Tardanzas','naranja')+
+    statCard(hoy_data.faltas||0,'Faltas','rojo')+
+    statCard(hoy_data.justificados||0,'Justificados','azul')+
+    statCard(hoy_data.sinRegistro||0,'Sin Registro','gris')+
+  '</div>';
+
+  // ACUMULADO DESDE INICIO
+  html += '<div style="margin-bottom:12px"><b style="color:#1a237e;font-size:15px">📊 Acumulado desde 17/04/2026</b></div>';
+  html += '<div class="statsGrid" style="margin-bottom:20px">'+
+    statCard(acumulado.totalRegistros||0,'Total Registros','azul')+
+    statCard(acumulado.puntuales||0,'Puntuales','verde')+
+    statCard(acumulado.tardanzas||0,'Tardanzas','naranja')+
+    statCard(acumulado.faltas||0,'Faltas','rojo')+
+    statCard(acumulado.justificados||0,'Justificados','azul')+
+  '</div>';
+
+  // TABLA POR GRADO Y SECCION
+  if (porGrado && porGrado.length > 0) {
+    html += '<div style="margin-bottom:12px"><b style="color:#1a237e;font-size:15px">📋 Por Grado y Sección — Hoy</b></div>';
+    html += '<div style="overflow-x:auto"><table class="repTable">';
+    html += '<thead><tr><th>Grado</th><th>Sección</th><th>Total</th>';
+    html += '<th style="background:#2e7d32">P</th><th style="background:#e65100">T</th>';
+    html += '<th style="background:#c62828">F</th><th style="background:#1565c0">J</th>';
+    html += '<th>% Asist.</th></tr></thead><tbody>';
+
+    porGrado.forEach(function(g) {
+      var pct = g.total > 0 ? Math.round((g.puntuales + g.tardanzas + g.justificados) / g.total * 100) : 0;
+      var colorPct = pct >= 90 ? '#2e7d32' : pct >= 75 ? '#e65100' : '#c62828';
+      html += '<tr>';
+      html += '<td><b>'+g.grado+'</b></td>';
+      html += '<td>'+g.seccion+'</td>';
+      html += '<td>'+g.total+'</td>';
+      html += '<td class="cel-P">'+g.puntuales+'</td>';
+      html += '<td class="cel-T">'+g.tardanzas+'</td>';
+      html += '<td class="cel-F">'+g.faltas+'</td>';
+      html += '<td class="cel-J">'+g.justificados+'</td>';
+      html += '<td style="font-weight:700;color:'+colorPct+'">'+pct+'%</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+
+  // GRAFICO SIMPLE
+  html += '<div style="margin-top:20px;margin-bottom:12px"><b style="color:#1a237e;font-size:15px">📊 Gráfico del Día</b></div>';
+  var total = (hoy_data.puntuales||0) + (hoy_data.tardanzas||0) + (hoy_data.faltas||0) + (hoy_data.justificados||0);
+  if (total > 0) {
+    var barras = [
+      {label:'Puntuales', val:hoy_data.puntuales||0, color:'#4caf50'},
+      {label:'Tardanzas', val:hoy_data.tardanzas||0, color:'#ff9800'},
+      {label:'Faltas', val:hoy_data.faltas||0, color:'#f44336'},
+      {label:'Justificados', val:hoy_data.justificados||0, color:'#2196f3'}
+    ];
+    html += '<div style="background:#f5f5f5;border-radius:8px;padding:16px">';
+    barras.forEach(function(b) {
+      var pct = Math.round(b.val / total * 100);
+      html += '<div style="margin-bottom:10px">';
+      html += '<div style="display:flex;justify-content:space-between;margin-bottom:4px">';
+      html += '<span style="font-size:13px;font-weight:600">'+b.label+'</span>';
+      html += '<span style="font-size:13px;color:#666">'+b.val+' ('+pct+'%)</span>';
+      html += '</div>';
+      html += '<div style="background:#ddd;border-radius:4px;height:20px">';
+      html += '<div style="background:'+b.color+';width:'+pct+'%;height:100%;border-radius:4px;transition:width .5s"></div>';
+      html += '</div></div>';
+    });
+    html += '</div>';
+  }
+
   document.getElementById('statsGenerales').innerHTML = html;
 }
 
-// QR SCANNERS PARA APP1
-var qrEst = null;
-var qrJustif_ = null;
-var qrAsist = null;
-var qrAsistActivo = false;
-
-function toggleQRAsistencia() {
-  var btn = document.getElementById('btnToggleQR');
-  var reader = document.getElementById('qrReaderAsistencia');
-  if (qrAsistActivo) {
-    if (qrAsist) { try { qrAsist.stop(); } catch(e){} qrAsist = null; }
-    reader.style.display = 'none';
-    btn.textContent = '📷 Activar QR';
-    qrAsistActivo = false;
-  } else {
-    reader.style.display = 'block';
-    btn.textContent = '⏹ Detener QR';
-    qrAsistActivo = true;
-    iniciarQRAsistencia();
-  }
-}
-
-function iniciarQRAsistencia() {
-  try {
-    qrAsist = new Html5Qrcode("qrReaderAsistencia");
-    qrAsist.start(
-      {facingMode: "user"},
-      {fps:15, qrbox:function(w,h){return {width:Math.floor(w*0.8),height:Math.floor(h*0.8)};}},
-      function(texto) {
-        qrAsist.stop();
-        qrAsistActivo = false;
-        document.getElementById('qrReaderAsistencia').style.display = 'none';
-        document.getElementById('btnToggleQR').textContent = '📷 Activar QR';
-        // Buscar estudiante y mostrar ficha
-        document.getElementById('buscarId').value = texto.trim();
-        mostrarModulo('estudiante', document.querySelector('[onclick*="estudiante"]'));
-        buscarEstudianteConId(texto.trim());
-      },
-      function(){}
-    ).catch(function(e){ console.log('QR asist error:', e); });
-  } catch(e) { console.log('QR init error:', e); }
-}
-
-function iniciarQREstudiante() {
-  try {
-    if (qrEst) { try{qrEst.stop();}catch(e){} qrEst=null; }
-    qrEst = new Html5Qrcode("qrReaderEstudiante");
-    Html5Qrcode.getCameras().then(function(cameras) {
-      if (!cameras || cameras.length === 0) return;
-      var camId = cameras[0].id;
-      qrEst.start(camId,
-        {fps:15, qrbox:function(w,h){return {width:Math.floor(w*0.8),height:Math.floor(h*0.8)};}},
-        function(texto) {
-          qrEst.stop(); qrEst = null;
-          document.getElementById('buscarId').value = texto.trim();
-          buscarEstudianteConId(texto.trim());
-        },
-        function(){}
-      ).catch(function(e){ console.log("QR Est error:",e); });
-    }).catch(function(e){ console.log("getCameras error:",e); });
-  } catch(e) { console.log("QR Est init error:",e); }
-}
-
-function iniciarQRJustif() {
-  try {
-    if (qrJustif_) { try{qrJustif_.stop();}catch(e){} qrJustif_=null; }
-    qrJustif_ = new Html5Qrcode("qrReaderJustif");
-    Html5Qrcode.getCameras().then(function(cameras) {
-      if (!cameras || cameras.length === 0) return;
-      var camId = cameras[0].id;
-      qrJustif_.start(camId,
-        {fps:15, qrbox:function(w,h){return {width:Math.floor(w*0.8),height:Math.floor(h*0.8)};}},
-        function(texto) {
-          qrJustif_.stop(); qrJustif_ = null;
-          document.getElementById('justifId').value = texto.trim();
-          buscarEstudianteJustifConId(texto.trim());
-        },
-        function(){}
-      ).catch(function(e){ console.log("QR Justif error:",e); });
-    }).catch(function(e){ console.log("getCameras error:",e); });
-  } catch(e) { console.log("QR Justif init error:",e); }
-}
 
 // SALIR
 function salir() {
