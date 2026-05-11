@@ -97,7 +97,10 @@ body { background:#0d0d0d; color:#f0f0f0; font-family:Arial,sans-serif; height:1
     </div>
     <div class="scanHeaderUser"><b id="hdrNombre">---</b><span id="hdrRol"></span></div>
   </div>
-  <div id="reader" style="width:100%;flex:1;min-height:300px;background:#000"></div>
+  <div id="reader" style="position:relative;flex:1;width:100%;background:#000;overflow:hidden">
+    <video id="qrVideo" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;display:block"></video>
+    <canvas id="qrCanvas" style="display:none"></canvas>
+  </div>
   <div class="scanFooter">
     <div class="footerStatus">Estado<b id="ftrStatus">Iniciando...</b></div>
     <div class="footerBtns">
@@ -117,7 +120,7 @@ body { background:#0d0d0d; color:#f0f0f0; font-family:Arial,sans-serif; height:1
   </div>
 </div>
 
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
 <script>
 var TOKEN = null;
 var ONLINE = navigator.onLine;
@@ -237,60 +240,37 @@ function abrirScanner(datos){
 function iniciarScanner(){
   var st = document.getElementById("ftrStatus");
   st.textContent = "Iniciando camara...";
+  var video = document.getElementById("qrVideo");
+  var canvas = document.getElementById("qrCanvas");
 
-  // Dar tiempo al DOM para renderizar el div antes de iniciar
-  setTimeout(function() {
-    html5QrcodeScanner = new Html5Qrcode("reader");
-    Html5Qrcode.getCameras()
-      .then(function(cameras) {
-        if (!cameras || cameras.length === 0) {
-          st.textContent = "No se encontro camara";
-          return;
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: "user", width:{ideal:1280}, height:{ideal:720} },
+    audio: false
+  }).then(function(stream) {
+    video.srcObject = stream;
+    video.play();
+    st.textContent = "Escaneando...";
+    // Loop de escaneo
+    function tick() {
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        var ctx = canvas.getContext("2d", {willReadFrequently:true});
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        var img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        var code = jsQR(img.data, img.width, img.height, {inversionAttempts:"attemptBoth"});
+        if (code && code.data) {
+          onQRDetected(code.data.trim());
         }
-        var camId = cameras[0].id;
-        return html5QrcodeScanner.start(
-          camId,
-          {
-            fps: 25,
-            qrbox: function(w,h){
-              return {width:Math.floor(w*0.85), height:Math.floor(h*0.85)};
-            },
-            experimentalFeatures: { useBarCodeDetectorIfSupported: true }
-          },
-          function(txt){ onQRDetected(txt); },
-          function(){}
-        );
-      })
-      .then(function(){ st.textContent = "Escaneando..."; })
-      .catch(function(err){ st.textContent = "Error: " + err; });
-  }, 500);
+      }
+      requestAnimationFrame(tick);
+    }
+    tick();
+  }).catch(function(err){
+    st.textContent = "Error camara: " + err.name;
+  });
 }
 
-// Calcular estado segun hora local (sin llamar al servidor)
-function calcularEstadoLocal() {
-  var ahora = new Date();
-  var h = ahora.getHours();
-  var m = ahora.getMinutes();
-  var totalMin = h * 60 + m;
-  
-  // Horarios (deben coincidir con CONFIG del Sheets)
-  var puntuaDesde = 22 * 60 + 30;  // 22:30 TEMPORAL PARA PRUEBA
-  var puntualHasta = 22 * 60 + 59; // 22:59 TEMPORAL PARA PRUEBA
-  var tardeHasta = 23 * 60 + 30;   // 23:30 TEMPORAL PARA PRUEBA
-
-  if (totalMin < puntuaDesde) return "FUERA_HORARIO";
-  if (totalMin >= tardeHasta) return "FUERA_HORARIO";
-  if (totalMin <= puntualHasta) return "PUNTUAL";
-  return "TARDE";
-}
-
-function horaActualStr() {
-  var d = new Date();
-  var h = String(d.getHours()).padStart(2,'0');
-  var m = String(d.getMinutes()).padStart(2,'0');
-  var s = String(d.getSeconds()).padStart(2,'0');
-  return h+":"+m+":"+s;
-}
 
 function onQRDetected(texto){
   if(PROCESANDO) return;
