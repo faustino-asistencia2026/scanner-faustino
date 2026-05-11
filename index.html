@@ -63,11 +63,10 @@ body { background:#0d0d0d; color:#f0f0f0; font-family:Arial,sans-serif; height:1
   <div class="logoSub">I.E.P. Faustino Sanchez Carrion - Miraflores - Ayacucho</div>
   <div class="loginBox">
     <div class="loginError" id="loginError"></div>
-    <label class="fieldLabel">Usuario</label>
-    <input class="fieldInput" type="text" id="inpUsuario" autocapitalize="none" placeholder="usuario">
-    <label class="fieldLabel">Contrasena</label>
-    <input class="fieldInput" type="password" id="inpClave" placeholder=".........">
-    <button class="btnLogin" id="btnLogin">INGRESAR</button>
+    <div style="text-align:center;padding:20px;color:#555">
+      <div style="width:30px;height:30px;border:3px solid #e0e0e0;border-top-color:#2979ff;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px"></div>
+      <div>Iniciando sistema...</div>
+    </div>
   </div>
   <div style="margin-top:20px;text-align:center;color:rgba(255,255,255,0.4);font-size:11px;line-height:1.8">
     <div>Desarrollado por: <b style="color:rgba(255,255,255,0.7)">Jose Carlos Huamani Quicano</b></div>
@@ -147,13 +146,41 @@ function llamarServidor(accion,datos){
 
 window.onload=function(){
   checkNet();
-  document.getElementById("btnLogin").onclick=handleLogin;
-  document.getElementById("inpClave").onkeydown=function(e){if(e.key==="Enter")handleLogin();};
   document.getElementById("btnSalir").onclick=salir;
   document.getElementById("btnRotar").onclick=rotarPantalla;
   var t=sessionStorage.getItem("qr_token");
-  if(t){TOKEN=t;abrirScanner({nombre:sessionStorage.getItem("qr_nombre")||"",rol:sessionStorage.getItem("qr_rol")||"",institucion:sessionStorage.getItem("qr_inst")||""});}
+  if(t){
+    TOKEN=t;
+    sessionStorage.setItem("qr_usuario","scanner");
+    sessionStorage.setItem("qr_clave","scanner2026");
+    abrirScanner({nombre:sessionStorage.getItem("qr_nombre")||"",rol:sessionStorage.getItem("qr_rol")||"",institucion:sessionStorage.getItem("qr_inst")||""});
+  } else {
+    autoLogin();
+  }
 };
+
+function autoLogin(){
+  llamarServidor("login",{usuario:"scanner",clave:"scanner2026"})
+    .then(function(res){
+      if(!res.ok){
+        document.getElementById("loginError").textContent=res.mensaje||"Error de acceso";
+        document.getElementById("loginError").style.display="block";
+        return;
+      }
+      TOKEN=res.token;
+      sessionStorage.setItem("qr_token",res.token);
+      sessionStorage.setItem("qr_usuario","scanner");
+      sessionStorage.setItem("qr_clave","scanner2026");
+      sessionStorage.setItem("qr_nombre",res.nombre||"");
+      sessionStorage.setItem("qr_rol",res.rol||"");
+      sessionStorage.setItem("qr_inst",res.institucion||"");
+      abrirScanner(res);
+    })
+    .catch(function(){
+      document.getElementById("loginError").textContent="Error de conexion";
+      document.getElementById("loginError").style.display="block";
+    });
+}
 
 function handleLogin(){
   if(!ONLINE){mostrarError("Sin conexion");return;}
