@@ -28,11 +28,22 @@ body { background:#0d0d0d; color:#f0f0f0; font-family:Arial,sans-serif; height:1
 .scanHeaderInst { color:#2979ff; font-weight:700; font-size:15px; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .scanHeaderUser b { display:block; color:#f0f0f0; font-size:13px; }
 .scanHeaderUser { font-size:11px; color:#555; text-align:right; }
-#reader { flex:1; width:100%; background:#000; min-height:0; }
-#reader video { transform: scaleX(-1) !important; width:100% !important; height:100% !important; object-fit:cover !important; }
-#reader > div { width:100% !important; height:100% !important; }
-#reader__scan_region { width:100% !important; height:100% !important; }
-#reader__scan_region video { width:100% !important; height:100% !important; object-fit:cover !important; }
+#reader { flex:1; width:100%; background:#000; min-height:0; position:relative; overflow:hidden; }
+#reader * { box-sizing:border-box; }
+#reader video { 
+  transform: scaleX(-1) !important; 
+  width:100% !important; 
+  height:100% !important; 
+  object-fit:cover !important;
+  position:absolute !important;
+  top:0 !important; left:0 !important;
+}
+#reader > div, #reader__scan_region { 
+  width:100% !important; 
+  height:100% !important;
+  position:absolute !important;
+  top:0 !important; left:0 !important;
+}
 .scanFooter { background:#1a1a1a; border-top:1px solid #2a2a2a; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
 .footerStatus { font-size:11px; color:#555; }
 .footerStatus b { display:block; font-size:13px; font-weight:600; color:#2979ff; }
