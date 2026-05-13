@@ -31,7 +31,6 @@ body { background:#0d0d0d; color:#f0f0f0; font-family:Arial,sans-serif; height:1
 #reader { flex:1; width:100%; background:#000; min-height:0; position:relative; overflow:hidden; }
 #reader * { box-sizing:border-box; }
 #reader video { 
-  transform: scaleX(-1) !important; 
   width:100% !important; 
   height:100% !important; 
   object-fit:cover !important;
@@ -97,10 +96,7 @@ body { background:#0d0d0d; color:#f0f0f0; font-family:Arial,sans-serif; height:1
     </div>
     <div class="scanHeaderUser"><b id="hdrNombre">---</b><span id="hdrRol"></span></div>
   </div>
-  <div id="reader" style="position:relative;flex:1;width:100%;height:0;min-height:0;background:#000;overflow:hidden">
-    <video id="qrVideo" autoplay playsinline muted style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover"></video>
-    <canvas id="qrCanvas" style="display:none"></canvas>
-  </div>
+  <div id="reader" style="width:100%;flex:1;background:#000"></div>
   <div class="scanFooter">
     <div class="footerStatus">Estado<b id="ftrStatus">Iniciando...</b></div>
     <div class="footerBtns">
@@ -120,7 +116,7 @@ body { background:#0d0d0d; color:#f0f0f0; font-family:Arial,sans-serif; height:1
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 var TOKEN = null;
 var ONLINE = navigator.onLine;
@@ -240,34 +236,51 @@ function abrirScanner(datos){
 function iniciarScanner(){
   var st = document.getElementById("ftrStatus");
   st.textContent = "Iniciando camara...";
-  var video = document.getElementById("qrVideo");
-  var canvas = document.getElementById("qrCanvas");
 
-  navigator.mediaDevices.getUserMedia({
-    video: { facingMode: "user", width:{ideal:1280}, height:{ideal:720} },
-    audio: false
-  }).then(function(stream) {
-    video.srcObject = stream;
-    video.play();
-    st.textContent = "Escaneando...";
-    // Loop de escaneo
-    function tick() {
-      if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        var ctx = canvas.getContext("2d", {willReadFrequently:true});
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        var img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        var code = jsQR(img.data, img.width, img.height, {inversionAttempts:"attemptBoth"});
-        if (code && code.data) {
-          onQRDetected(code.data.trim());
-        }
-      }
-      requestAnimationFrame(tick);
+  html5QrcodeScanner = new Html5Qrcode("reader");
+
+  Html5Qrcode.getCameras().then(function(cameras) {
+    if (!cameras || cameras.length === 0) {
+      st.textContent = "No se encontro camara";
+      return;
     }
-    tick();
+    var camId = cameras[0].id;
+    html5QrcodeScanner.start(
+      camId,
+      {
+        fps: 25,
+        qrbox: function(w,h){ return {width:Math.floor(w*0.9), height:Math.floor(h*0.9)}; },
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+      },
+      function(txt){ onQRDetected(txt); },
+      function(){}
+    ).then(function(){
+      st.textContent = "Escaneando...";
+      // Forzar pantalla completa despues de iniciar
+      setTimeout(function(){
+        var videos = document.querySelectorAll('#reader video');
+        videos.forEach(function(v){
+          v.style.width = '100%';
+          v.style.height = '100%';
+          v.style.objectFit = 'cover';
+          v.style.position = 'absolute';
+          v.style.top = '0';
+          v.style.left = '0';
+        });
+        var divs = document.querySelectorAll('#reader > div');
+        divs.forEach(function(d){
+          d.style.width = '100%';
+          d.style.height = '100%';
+          d.style.position = 'absolute';
+          d.style.top = '0';
+          d.style.left = '0';
+        });
+      }, 1000);
+    }).catch(function(err){
+      st.textContent = "Error: " + err;
+    });
   }).catch(function(err){
-    st.textContent = "Error camara: " + err.name;
+    st.textContent = "Error camara: " + err;
   });
 }
 
