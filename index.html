@@ -221,7 +221,7 @@ function calcularEstadoLocal() {
   var ahora = new Date();
   var totalMin = ahora.getHours() * 60 + ahora.getMinutes();
   var puntuaDesde = 7 * 60;       // 07:00
-  var puntualHasta = 7 * 60 + 35; // 07:35
+  var puntualHasta = 7 * 60 + 30; // 07:30
   var tardeHasta = 11 * 60;       // 11:00
   if (totalMin < puntuaDesde) return "FUERA_HORARIO";
   if (totalMin >= tardeHasta) return "FUERA_HORARIO";
