@@ -214,7 +214,19 @@ function iniciarScanner(){
           function(){}
         );
       })
-      .then(function(){ st.textContent = "Escaneando..."; })
+      .then(function(){ 
+        st.textContent = "Escaneando...";
+        // Aplicar espejo al video via JS
+        setTimeout(function(){
+          var v = document.querySelector('#reader video');
+          if(v) v.style.transform = 'scaleX(-1)';
+        }, 1000);
+        // Intentar de nuevo por si no cargó
+        setTimeout(function(){
+          var v = document.querySelector('#reader video');
+          if(v) v.style.transform = 'scaleX(-1)';
+        }, 2000);
+      })
       .catch(function(err){ st.textContent = "Error: " + err; });
   }, 500);
 }
