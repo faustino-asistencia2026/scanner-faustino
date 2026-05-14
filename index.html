@@ -64,10 +64,11 @@ body { background:#0d0d0d; color:#f0f0f0; font-family:Arial,sans-serif; height:1
   <div class="logoSub">I.E.P. Faustino Sanchez Carrion - Miraflores - Ayacucho</div>
   <div class="loginBox">
     <div class="loginError" id="loginError"></div>
-    <div style="text-align:center;padding:20px">
-      <div class="spinner"></div>
-      <div style="margin-top:12px;color:#555;font-size:13px">Iniciando sistema...</div>
-    </div>
+    <label class="fieldLabel">Usuario</label>
+    <input class="fieldInput" type="text" id="inpUsuario" autocapitalize="none" placeholder="usuario" value="asistencia">
+    <label class="fieldLabel">Contrasena</label>
+    <input class="fieldInput" type="password" id="inpClave" placeholder="........." value="123456">
+    <button class="btnLogin" id="btnLogin">INGRESAR</button>
   </div>
   <div style="margin-top:20px;text-align:center;color:rgba(255,255,255,0.4);font-size:11px;line-height:1.8">
     <div>Desarrollado por: <b style="color:rgba(255,255,255,0.7)">Jose Carlos Huamani Quicano</b></div>
@@ -149,31 +150,36 @@ window.onload=function(){
   checkNet();
   document.getElementById("btnSalir").onclick=salir;
   document.getElementById("btnRotar").onclick=rotarPantalla;
-  // Siempre hacer login fresco para obtener token valido
-  autoLogin();
+  document.getElementById("btnLogin").onclick=handleLogin;
+  document.getElementById("inpClave").onkeydown=function(e){if(e.key==="Enter")handleLogin();};
 };
 
-function autoLogin(){
-  llamarServidor("login",{usuario:"scanner",clave:"scanner2026"})
+function handleLogin(){
+  if(!ONLINE){mostrarError("Sin conexion");return;}
+  var u=document.getElementById("inpUsuario").value.trim();
+  var p=document.getElementById("inpClave").value.trim();
+  if(!u||!p){mostrarError("Ingresa usuario y contrasena");return;}
+  var btn=document.getElementById("btnLogin");
+  btn.disabled=true;btn.textContent="VERIFICANDO...";
+  llamarServidor("login",{usuario:u,clave:p})
     .then(function(res){
-      if(!res.ok){
-        document.getElementById("loginError").textContent=res.mensaje||"Error de acceso";
-        document.getElementById("loginError").style.display="block";
-        return;
-      }
+      btn.disabled=false;btn.textContent="INGRESAR";
+      if(!res.ok){mostrarError(res.mensaje||"Error");sndError();return;}
       TOKEN=res.token;
       sessionStorage.setItem("qr_token",res.token);
-      sessionStorage.setItem("qr_usuario","scanner");
-      sessionStorage.setItem("qr_clave","scanner2026");
+      sessionStorage.setItem("qr_usuario",u);
+      sessionStorage.setItem("qr_clave",p);
       sessionStorage.setItem("qr_nombre",res.nombre||"");
       sessionStorage.setItem("qr_rol",res.rol||"");
       sessionStorage.setItem("qr_inst",res.institucion||"");
       abrirScanner(res);
     })
-    .catch(function(){
-      document.getElementById("loginError").textContent="Error de conexion";
-      document.getElementById("loginError").style.display="block";
-    });
+    .catch(function(){btn.disabled=false;btn.textContent="INGRESAR";mostrarError("Error de conexion");sndError();});
+}
+
+function mostrarError(msg){
+  var el=document.getElementById("loginError");
+  el.textContent=msg;el.style.display="block";
 }
 
 function abrirScanner(datos){
@@ -264,18 +270,21 @@ function onQRDetected(texto){
 }
 
 function enviarAlServidor(id, hora) {
-  // Siempre hacer re-login para obtener token fresco
-  llamarServidor("login", {usuario:"scanner", clave:"scanner2026"})
-    .then(function(lr) {
-      if (!lr.ok) return;
-      TOKEN = lr.token;
-      sessionStorage.setItem("qr_token", lr.token);
-      return llamarServidor("escanear", {token:TOKEN, id:id});
-    })
+  llamarServidor("escanear", {token:TOKEN, id:id})
     .then(function(res) {
-      if (res) console.log("Servidor:", JSON.stringify(res));
+      if (!res.ok && res.mensaje && res.mensaje.indexOf("Sesion") >= 0) {
+        var u=sessionStorage.getItem("qr_usuario");
+        var p=sessionStorage.getItem("qr_clave");
+        return llamarServidor("login",{usuario:u,clave:p})
+          .then(function(lr){
+            if(!lr.ok) return;
+            TOKEN=lr.token;
+            sessionStorage.setItem("qr_token",lr.token);
+            return llamarServidor("escanear",{token:TOKEN,id:id});
+          });
+      }
     })
-    .catch(function(err){ console.log("Error:", err.message); });
+    .catch(function(err){ console.log("Error servidor:", err.message); });
 }
 
 function mostrarResultado(res,id){
@@ -327,7 +336,6 @@ function salir(){
   document.getElementById("scannerScreen").style.display="none";
   document.getElementById("loginScreen").style.display="flex";
   document.getElementById("loginError").style.display="none";
-  autoLogin();
 }
 </script>
 </body>
