@@ -219,16 +219,34 @@ function iniciarScanner(){
       })
       .then(function(){ 
         st.textContent = "Escaneando...";
-        // Aplicar espejo al video via JS
-        setTimeout(function(){
+        // Aplicar espejo y pantalla completa via JS
+        function aplicarEstilos() {
+          var reader = document.getElementById('reader');
+          var h = reader ? reader.offsetHeight : 0;
+          // Todos los divs internos
+          var divs = document.querySelectorAll('#reader div, #reader__scan_region');
+          divs.forEach(function(d){
+            d.style.width = '100%';
+            d.style.height = h + 'px';
+            d.style.padding = '0';
+            d.style.margin = '0';
+            d.style.border = 'none';
+          });
+          // Video
           var v = document.querySelector('#reader video');
-          if(v) v.style.transform = 'scaleX(-1)';
-        }, 1000);
-        // Intentar de nuevo por si no cargó
-        setTimeout(function(){
-          var v = document.querySelector('#reader video');
-          if(v) v.style.transform = 'scaleX(-1)';
-        }, 2000);
+          if(v){
+            v.style.width = '100%';
+            v.style.height = h + 'px';
+            v.style.objectFit = 'cover';
+            v.style.transform = 'scaleX(-1)';
+          }
+          // Ocultar imagen del QR box
+          var imgs = document.querySelectorAll('#reader img');
+          imgs.forEach(function(i){ i.style.display='none'; });
+        }
+        setTimeout(aplicarEstilos, 800);
+        setTimeout(aplicarEstilos, 1500);
+        setTimeout(aplicarEstilos, 3000);
       })
       .catch(function(err){ st.textContent = "Error: " + err; });
   }, 500);
