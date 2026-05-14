@@ -219,34 +219,13 @@ function iniciarScanner(){
       })
       .then(function(){ 
         st.textContent = "Escaneando...";
-        // Aplicar espejo y pantalla completa via JS
-        function aplicarEstilos() {
-          var reader = document.getElementById('reader');
-          var h = reader ? reader.offsetHeight : 0;
-          // Todos los divs internos
-          var divs = document.querySelectorAll('#reader div, #reader__scan_region');
-          divs.forEach(function(d){
-            d.style.width = '100%';
-            d.style.height = h + 'px';
-            d.style.padding = '0';
-            d.style.margin = '0';
-            d.style.border = 'none';
-          });
-          // Video
+        // Solo aplicar espejo al video
+        function aplicarEspejo() {
           var v = document.querySelector('#reader video');
-          if(v){
-            v.style.width = '100%';
-            v.style.height = h + 'px';
-            v.style.objectFit = 'cover';
-            v.style.transform = 'scaleX(-1)';
-          }
-          // Ocultar imagen del QR box
-          var imgs = document.querySelectorAll('#reader img');
-          imgs.forEach(function(i){ i.style.display='none'; });
+          if(v) v.style.transform = 'scaleX(-1)';
         }
-        setTimeout(aplicarEstilos, 800);
-        setTimeout(aplicarEstilos, 1500);
-        setTimeout(aplicarEstilos, 3000);
+        setTimeout(aplicarEspejo, 800);
+        setTimeout(aplicarEspejo, 2000);
       })
       .catch(function(err){ st.textContent = "Error: " + err; });
   }, 500);
