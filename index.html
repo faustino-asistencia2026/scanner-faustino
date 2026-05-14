@@ -149,17 +149,8 @@ window.onload=function(){
   checkNet();
   document.getElementById("btnSalir").onclick=salir;
   document.getElementById("btnRotar").onclick=rotarPantalla;
-  var t=sessionStorage.getItem("qr_token");
-  if(t){
-    TOKEN=t;
-    abrirScanner({
-      nombre:sessionStorage.getItem("qr_nombre")||"",
-      rol:sessionStorage.getItem("qr_rol")||"",
-      institucion:sessionStorage.getItem("qr_inst")||""
-    });
-  } else {
-    autoLogin();
-  }
+  // Siempre hacer login fresco para obtener token valido
+  autoLogin();
 };
 
 function autoLogin(){
