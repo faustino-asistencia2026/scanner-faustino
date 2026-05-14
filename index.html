@@ -273,19 +273,18 @@ function onQRDetected(texto){
 }
 
 function enviarAlServidor(id, hora) {
-  llamarServidor("escanear", {token:TOKEN, id:id})
-    .then(function(res) {
-      if (!res.ok && res.mensaje && res.mensaje.indexOf("Sesion") >= 0) {
-        return llamarServidor("login", {usuario:"scanner", clave:"scanner2026"})
-          .then(function(lr) {
-            if (!lr.ok) return;
-            TOKEN=lr.token;
-            sessionStorage.setItem("qr_token",lr.token);
-            return llamarServidor("escanear", {token:TOKEN, id:id});
-          });
-      }
+  // Siempre hacer re-login para obtener token fresco
+  llamarServidor("login", {usuario:"scanner", clave:"scanner2026"})
+    .then(function(lr) {
+      if (!lr.ok) return;
+      TOKEN = lr.token;
+      sessionStorage.setItem("qr_token", lr.token);
+      return llamarServidor("escanear", {token:TOKEN, id:id});
     })
-    .catch(function(err){ console.log("Error servidor:", err.message); });
+    .then(function(res) {
+      if (res) console.log("Servidor:", JSON.stringify(res));
+    })
+    .catch(function(err){ console.log("Error:", err.message); });
 }
 
 function mostrarResultado(res,id){
