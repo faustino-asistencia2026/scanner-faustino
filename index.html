@@ -23,9 +23,12 @@ body { background:#0d0d0d; color:#f0f0f0; font-family:Arial,sans-serif; height:1
 .scanHeaderInst { color:#2979ff; font-weight:700; font-size:15px; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .scanHeaderUser b { display:block; color:#f0f0f0; font-size:13px; }
 .scanHeaderUser { font-size:11px; color:#555; text-align:right; }
-#reader { flex:1; width:100%; background:#000; min-height:300px; }
-#reader > div { width:100% !important; padding:0 !important; }
-#reader video { width:100% !important; height:100% !important; object-fit:cover !important; transform:scaleX(-1) !important; }
+#reader { flex:1; width:100%; background:#000; min-height:300px; overflow:hidden; }
+#reader * { padding:0 !important; margin:0 !important; border:none !important; }
+#reader > div { width:100% !important; height:100% !important; }
+#reader video { width:100% !important; height:100% !important; object-fit:cover !important; }
+#reader img { display:none !important; }
+#reader__scan_region { width:100% !important; height:100% !important; }
 .scanFooter { background:#1a1a1a; border-top:1px solid #2a2a2a; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
 .footerStatus { font-size:11px; color:#555; }
 .footerStatus b { display:block; font-size:13px; font-weight:600; color:#2979ff; }
