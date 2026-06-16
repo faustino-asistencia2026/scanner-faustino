@@ -106,11 +106,14 @@ body { background:#0d0d0d; color:#f0f0f0; font-family:Arial,sans-serif; height:1
   </div>
 </div>
 
-<script src="html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script>
 var TOKEN = null;
 var ONLINE = navigator.onLine;
-var html5QrcodeScanner = null;
+var jsqrStream = null;
+var jsqrAnimFrame = null;
+var jsqrCanvas = null;
+var jsqrCtx = null;
 var PROCESANDO = false;
 var ULTIMO_ID = null;
 var ULTIMO_TIME = 0;
@@ -195,128 +198,99 @@ function iniciarScanner(){
   var st = document.getElementById("ftrStatus");
   st.textContent = "Iniciando camara...";
 
-  // Configuracion optimizada para tablets Pronatel Mineduc
-  var CONFIG_SCAN = {
-    fps: 15,
-    qrbox: function(w, h) {
-      var size = Math.floor(Math.min(w, h) * 0.65);
-      return { width: size, height: size };
-    },
-    aspectRatio: 1.0,
-    experimentalFeatures: { useBarCodeDetectorIfSupported: true }
-  };
+  // Preparar contenedor de video
+  var readerDiv = document.getElementById("reader");
+  readerDiv.innerHTML = "";
+  var video = document.createElement("video");
+  video.setAttribute("playsinline", "true");
+  video.setAttribute("autoplay", "true");
+  video.setAttribute("muted", "true");
+  // Espejo visual para camara frontal (el canvas de deteccion NO se espeja)
+  video.style.cssText = "width:100%;height:100%;object-fit:cover;display:block;transform:scaleX(-1);-webkit-transform:scaleX(-1);";
+  readerDiv.appendChild(video);
 
-  // Camara trasera no necesita espejo
-  function quitarEspejo() {
-    var v = document.querySelector('#reader video');
-    if (v) { v.style.transform = ''; v.style.webkitTransform = ''; }
+  jsqrCanvas = document.createElement("canvas");
+  jsqrCtx = jsqrCanvas.getContext("2d", { willReadFrequently: true });
+
+  // Camara frontal — estudiantes acercan el carnet a la tablet fija
+  var constraints = [
+    { video: { facingMode: { exact: "user" }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+    { video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } } },
+    { video: { facingMode: "user" } },
+    { video: true }
+  ];
+
+  // Detectar si BarcodeDetector nativo esta disponible (como MobileScanner en Flutter)
+  var usarNativo = (typeof BarcodeDetector !== "undefined");
+  var barcodeDetector = null;
+  if (usarNativo) {
+    try {
+      barcodeDetector = new BarcodeDetector({ formats: ["qr_code"] });
+      st.textContent = "Detector nativo OK...";
+    } catch(e) {
+      usarNativo = false;
+    }
   }
 
-  // INTENTO 1: facingMode exact "environment" (camara trasera forzada)
-  function iniciarConEnvironmentExact() {
-    html5QrcodeScanner = new Html5Qrcode("reader");
-    return html5QrcodeScanner.start(
-      { facingMode: { exact: "environment" } },
-      CONFIG_SCAN,
-      function(txt) { onQRDetected(txt); },
-      function() {}
-    ).then(function() {
-      st.textContent = "Escaneando...";
-      setTimeout(quitarEspejo, 800);
-      setTimeout(quitarEspejo, 2000);
-    });
+  function intentarConstraint(idx) {
+    if (idx >= constraints.length) {
+      st.textContent = "Error: sin acceso a camara";
+      return;
+    }
+    navigator.mediaDevices.getUserMedia(constraints[idx])
+      .then(function(stream) {
+        jsqrStream = stream;
+        video.srcObject = stream;
+        video.play().then(function() {
+          if (usarNativo) {
+            st.textContent = "Escaneando (nativo)...";
+            escanearNativo(video);
+          } else {
+            st.textContent = "Escaneando...";
+            escanearJsQR(video);
+          }
+        });
+      })
+      .catch(function() {
+        intentarConstraint(idx + 1);
+      });
   }
 
-  // INTENTO 2: facingMode "environment" sin exact
-  function iniciarConEnvironment() {
-    if (html5QrcodeScanner) { try { html5QrcodeScanner.stop(); } catch(e) {} }
-    html5QrcodeScanner = new Html5Qrcode("reader");
-    return html5QrcodeScanner.start(
-      { facingMode: "environment" },
-      CONFIG_SCAN,
-      function(txt) { onQRDetected(txt); },
-      function() {}
-    ).then(function() {
-      st.textContent = "Escaneando...";
-      setTimeout(quitarEspejo, 800);
-      setTimeout(quitarEspejo, 2000);
-    });
-  }
-
-  // INTENTO 3: buscar camara trasera por ID entre las disponibles
-  function iniciarConCamaraTrasera() {
-    if (html5QrcodeScanner) { try { html5QrcodeScanner.stop(); } catch(e) {} }
-    return Html5Qrcode.getCameras().then(function(cameras) {
-      if (!cameras || cameras.length === 0) {
-        st.textContent = "No se encontro camara";
-        return Promise.reject("sin_camaras");
-      }
-      // Buscar trasera por label
-      var camElegida = null;
-      for (var i = 0; i < cameras.length; i++) {
-        var label = (cameras[i].label || "").toLowerCase();
-        if (label.indexOf("back") !== -1 || label.indexOf("rear") !== -1 ||
-            label.indexOf("environment") !== -1 || label.indexOf("trasera") !== -1 ||
-            label.indexOf("posterior") !== -1) {
-          camElegida = cameras[i];
-          break;
+  // MODO 1: BarcodeDetector nativo (igual que MobileScanner de Flutter)
+  // Muy rapido, usa GPU del dispositivo, ideal para tablets Android
+  function escanearNativo(video) {
+    if (!jsqrStream) return;
+    barcodeDetector.detect(video)
+      .then(function(barcodes) {
+        if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+          onQRDetected(barcodes[0].rawValue);
         }
-      }
-      // Si no encuentra por label, tomar la ultima (en tablets suele ser la trasera)
-      if (!camElegida) camElegida = cameras[cameras.length - 1];
-      html5QrcodeScanner = new Html5Qrcode("reader");
-      return html5QrcodeScanner.start(
-        camElegida.id,
-        CONFIG_SCAN,
-        function(txt) { onQRDetected(txt); },
-        function() {}
-      ).then(function() {
-        st.textContent = "Escaneando...";
-        setTimeout(quitarEspejo, 800);
-        setTimeout(quitarEspejo, 2000);
+      })
+      .catch(function() {})
+      .finally(function() {
+        jsqrAnimFrame = requestAnimationFrame(function(){ escanearNativo(video); });
       });
-    });
   }
 
-  // INTENTO 4 (ultimo recurso): primera camara disponible
-  function iniciarCualquierCamara() {
-    if (html5QrcodeScanner) { try { html5QrcodeScanner.stop(); } catch(e) {} }
-    return Html5Qrcode.getCameras().then(function(cameras) {
-      if (!cameras || cameras.length === 0) {
-        st.textContent = "Sin acceso a camara";
-        return;
-      }
-      html5QrcodeScanner = new Html5Qrcode("reader");
-      return html5QrcodeScanner.start(
-        cameras[0].id,
-        CONFIG_SCAN,
-        function(txt) { onQRDetected(txt); },
-        function() {}
-      ).then(function() {
-        st.textContent = "Escaneando (frontal)...";
+  // MODO 2: jsQR como fallback (navegadores sin BarcodeDetector)
+  function escanearJsQR(video) {
+    if (!jsqrStream) return;
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      jsqrCanvas.width  = video.videoWidth;
+      jsqrCanvas.height = video.videoHeight;
+      jsqrCtx.drawImage(video, 0, 0, jsqrCanvas.width, jsqrCanvas.height);
+      var imageData = jsqrCtx.getImageData(0, 0, jsqrCanvas.width, jsqrCanvas.height);
+      var code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: "dontInvert"
       });
-    });
+      if (code && code.data) {
+        onQRDetected(code.data);
+      }
+    }
+    jsqrAnimFrame = requestAnimationFrame(function(){ escanearJsQR(video); });
   }
 
-  // Cadena de 4 intentos automaticos
-  setTimeout(function() {
-    iniciarConEnvironmentExact()
-      .catch(function() {
-        st.textContent = "Probando camara trasera...";
-        return iniciarConEnvironment();
-      })
-      .catch(function() {
-        st.textContent = "Buscando camara...";
-        return iniciarConCamaraTrasera();
-      })
-      .catch(function() {
-        st.textContent = "Camara alternativa...";
-        return iniciarCualquierCamara();
-      })
-      .catch(function(err) {
-        st.textContent = "Error camara: " + err;
-      });
-  }, 500);
+  setTimeout(function(){ intentarConstraint(0); }, 500);
 }
 
 function calcularEstadoLocal() {
@@ -423,7 +397,9 @@ function rotarPantalla(){
 function salir(){
   if(!confirm("Cerrar sesion?")) return;
   sessionStorage.clear(); TOKEN=null;
-  if(html5QrcodeScanner){try{html5QrcodeScanner.stop();}catch(e){} html5QrcodeScanner=null;}
+  if(jsqrAnimFrame){ cancelAnimationFrame(jsqrAnimFrame); jsqrAnimFrame=null; }
+  if(jsqrStream){ jsqrStream.getTracks().forEach(function(t){t.stop();}); jsqrStream=null; }
+  var readerDiv=document.getElementById("reader"); if(readerDiv) readerDiv.innerHTML="";
   document.getElementById("scannerScreen").style.display="none";
   document.getElementById("loginScreen").style.display="flex";
   document.getElementById("loginError").style.display="none";
