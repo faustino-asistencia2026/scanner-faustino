@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Consulta de Asistencia - Faustino Sánchez Carrión</title>
+<style>
+:root {
+  --verde:  #1a6b3c;
+  --verde2: #2d9e5f;
+  --verde3: #e8f5ee;
+  --dorado: #c8972a;
+  --rojo:   #e74c3c;
+  --naranja:#e67e22;
+  --texto:  #1a1a2e;
+  --gris:   #f4f6f9;
+  --sombra: 0 4px 20px rgba(0,0,0,0.10);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family:'Segoe UI',Arial,sans-serif;
+  background:var(--gris); color:var(--texto);
+  min-height:100vh;
+}
+
+/* HEADER */
+header {
+  background:linear-gradient(135deg,var(--verde) 0%,var(--verde2) 100%);
+  color:white; padding:16px 20px;
+  display:flex; align-items:center; gap:14px;
+  box-shadow:var(--sombra);
+}
+header img {
+  width:52px; height:52px; border-radius:50%;
+  border:2px solid var(--dorado); object-fit:cover;
+}
+header h1 { font-size:1rem; font-weight:800; line-height:1.3; }
+header p  { font-size:0.75rem; opacity:0.85; }
+
+/* CONTENIDO */
+.container { max-width:500px; margin:0 auto; padding:20px 16px; }
+
+/* CARD */
+.card {
+  background:white; border-radius:16px;
+  padding:24px; box-shadow:var(--sombra);
+  margin-bottom:16px;
+}
+
+/* LOGIN DNI */
+.login-icon { font-size:3rem; text-align:center; margin-bottom:12px; }
+.login-title { font-size:1.2rem; font-weight:800; color:var(--verde); text-align:center; margin-bottom:6px; }
+.login-sub   { font-size:0.85rem; color:#777; text-align:center; margin-bottom:20px; line-height:1.5; }
+
+.input-group { margin-bottom:16px; }
+.input-group label { font-size:0.82rem; color:#555; display:block; margin-bottom:6px; font-weight:600; }
+.input-group input {
+  width:100%; border:2px solid #e0e0e0; border-radius:10px;
+  padding:12px 14px; font-size:1rem; color:var(--texto);
+  transition:border 0.2s; outline:none;
+  letter-spacing:2px; text-align:center;
+}
+.input-group input:focus { border-color:var(--verde2); }
+
+.btn-primary {
+  width:100%; background:var(--verde); color:white;
+  border:none; border-radius:10px; padding:14px;
+  font-size:1rem; font-weight:700; cursor:pointer;
+  transition:all 0.2s;
+}
+.btn-primary:hover { background:var(--verde2); }
+.btn-primary:disabled { background:#aaa; cursor:not-allowed; }
+
+.error-msg {
+  background:#fdecea; color:var(--rojo);
+  border-radius:8px; padding:10px 14px;
+  font-size:0.85rem; text-align:center;
+  margin-top:12px; display:none;
+}
+
+/* ESTUDIANTE INFO */
+.est-nombre { font-size:1.15rem; font-weight:800; color:var(--verde); }
+.est-detalle { font-size:0.85rem; color:#777; margin-top:4px; }
+.est-dni     { font-size:0.8rem; color:#aaa; margin-top:2px; }
+
+/* RESUMEN */
+.resumen {
+  display:grid; grid-template-columns:repeat(3,1fr); gap:10px;
+  margin-bottom:16px;
+}
+.res-item { background:white; border-radius:12px; padding:14px 8px; text-align:center; box-shadow:var(--sombra); }
+.res-num   { font-size:1.8rem; font-weight:900; }
+.res-label { font-size:0.72rem; color:#888; margin-top:3px; }
+.res-item.puntual .res-num { color:#27ae60; }
+.res-item.tarde   .res-num { color:var(--naranja); }
+.res-item.falta   .res-num { color:var(--rojo); }
+
+/* FILTRO */
+.filtro {
+  display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;
+  margin-bottom:16px;
+}
+.filtro-campo { flex:1; min-width:120px; }
+.filtro-campo label { font-size:0.78rem; color:#555; display:block; margin-bottom:4px; font-weight:600; }
+.filtro-campo input {
+  width:100%; border:1px solid #ddd; border-radius:8px;
+  padding:8px 10px; font-size:0.82rem; color:var(--texto);
+}
+.btn-filtrar {
+  background:var(--verde2); color:white; border:none;
+  border-radius:8px; padding:9px 16px; font-size:0.82rem;
+  font-weight:700; cursor:pointer; white-space:nowrap;
+}
+
+/* TABLA */
+.tabla-titulo { font-size:0.9rem; font-weight:700; color:var(--verde); margin-bottom:10px; }
+.tabla-wrap   { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:0.83rem; }
+th { background:var(--verde); color:white; padding:9px 10px; text-align:left; font-size:0.8rem; }
+td { padding:8px 10px; border-bottom:1px solid #f0f0f0; }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:#f9f9f9; }
+
+.badge {
+  display:inline-block; padding:3px 10px; border-radius:20px;
+  font-size:0.75rem; font-weight:700;
+}
+.badge.PUNTUAL { background:#d5f5e3; color:#1e8449; }
+.badge.TARDE   { background:#fdebd0; color:#b7770d; }
+.badge.FALTA   { background:#fadbd8; color:#c0392b; }
+
+.sin-datos { text-align:center; color:#aaa; padding:20px; font-size:0.85rem; }
+
+/* BTN SALIR */
+.btn-salir {
+  width:100%; background:var(--gris); color:#666;
+  border:1px solid #ddd; border-radius:10px; padding:11px;
+  font-size:0.88rem; font-weight:600; cursor:pointer;
+  margin-top:4px;
+}
+.btn-salir:hover { background:#eee; }
+
+/* LOADING */
+.loading {
+  text-align:center; padding:30px;
+  color:var(--verde2); font-size:0.9rem;
+}
+.spinner {
+  width:36px; height:36px; border:4px solid #e0e0e0;
+  border-top-color:var(--verde2); border-radius:50%;
+  animation:spin 0.8s linear infinite;
+  margin:0 auto 12px;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* FOOTER */
+footer {
+  text-align:center; color:#aaa; font-size:0.75rem;
+  padding:20px 16px 32px; margin-top:8px;
+}
+footer strong { color:var(--verde); }
+</style>
+</head>
+<body>
+
+<header>
+  <img src="https://res.cloudinary.com/dptysw4k8/image/upload/v1775414482/LOGO_ULTIMO_OK_au7lf1.png"
+       alt="Logo" onerror="this.style.display='none'">
+  <div>
+    <h1>I.E.P. Faustino Sánchez Carrión</h1>
+    <p>Consulta de Asistencia para Padres de Familia</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- PANTALLA LOGIN -->
+  <div id="pantalla-login">
+    <div style="height:24px"></div>
+    <div class="card">
+      <div class="login-icon">🔍</div>
+      <div class="login-title">Consultar Asistencia</div>
+      <div class="login-sub">
+        Ingrese el DNI de su hijo(a) para consultar<br>su registro de asistencia
+      </div>
+      <div class="input-group">
+        <label>DNI del Estudiante</label>
+        <input type="number" id="input-dni" placeholder="Ej: 78137866"
+               maxlength="8" oninput="this.value=this.value.slice(0,8)"
+               onkeypress="if(event.key==='Enter') buscarPorDni()">
+      </div>
+      <button class="btn-primary" onclick="buscarPorDni()" id="btn-buscar">
+        🔍 Consultar Asistencia
+      </button>
+      <div class="error-msg" id="error-msg"></div>
+    </div>
+  </div>
+
+  <!-- PANTALLA LOADING -->
+  <div id="pantalla-loading" style="display:none">
+    <div style="height:40px"></div>
+    <div class="loading">
+      <div class="spinner"></div>
+      Consultando asistencia...
+    </div>
+  </div>
+
+  <!-- PANTALLA RESULTADO -->
+  <div id="pantalla-resultado" style="display:none">
+    <div style="height:16px"></div>
+
+    <!-- Datos estudiante -->
+    <div class="card">
+      <div class="est-nombre" id="res-nombre">---</div>
+      <div class="est-detalle" id="res-detalle">---</div>
+      <div class="est-dni"    id="res-dni">---</div>
+    </div>
+
+    <!-- Resumen -->
+    <div class="resumen">
+      <div class="res-item puntual">
+        <div class="res-num" id="res-puntual">0</div>
+        <div class="res-label">✅ Puntuales</div>
+      </div>
+      <div class="res-item tarde">
+        <div class="res-num" id="res-tarde">0</div>
+        <div class="res-label">⏰ Tardanzas</div>
+      </div>
+      <div class="res-item falta">
+        <div class="res-num" id="res-falta">0</div>
+        <div class="res-label">❌ Faltas</div>
+      </div>
+    </div>
+
+    <!-- Filtro fechas -->
+    <div class="card">
+      <div class="filtro">
+        <div class="filtro-campo">
+          <label>Desde</label>
+          <input type="date" id="fecha-desde">
+        </div>
+        <div class="filtro-campo">
+          <label>Hasta</label>
+          <input type="date" id="fecha-hasta">
+        </div>
+        <button class="btn-filtrar" onclick="filtrar()">🔍 Ver</button>
+      </div>
+
+      <!-- Tabla registros -->
+      <div class="tabla-titulo">Detalle de Asistencia</div>
+      <div class="tabla-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Hora</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <button class="btn-salir" onclick="nuevaConsulta()">← Nueva Consulta</button>
+  </div>
+
+</div>
+
+<footer>
+  <strong>I.E.P. Faustino Sánchez Carrión</strong> — Miraflores, Ayacucho<br>
+  Sistema desarrollado por <strong>José Carlos Huamaní Quicaño</strong> | JECKAM Academy © 2026
+</footer>
+
+<script>
+var WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzVtl5AUIbVL4oIcYhQvcZFqQYAKDewKufU_mKAs1z47EGPEpuW4pQp-MJ7rxk4gpz1/exec";
+var dniActual = null;
+
+// ── BUSCAR POR DNI ──────────────────────────────────────────
+function buscarPorDni() {
+  var dni = document.getElementById("input-dni").value.trim();
+  if (!dni || dni.length < 7 || dni.length > 8) {
+    mostrarError("Ingrese un DNI válido de 7 u 8 dígitos");
+    return;
+  }
+
+  dniActual = dni;
+  ocultarError();
+  mostrarPantalla("loading");
+
+  // Fechas mes actual
+  var hoy   = new Date();
+  var anio  = hoy.getFullYear();
+  var mes   = String(hoy.getMonth() + 1).padStart(2, "0");
+  var desde = anio + "-" + mes + "-01";
+  var hasta = anio + "-" + mes + "-" + String(new Date(anio, hoy.getMonth()+1, 0).getDate()).padStart(2,"0");
+
+  consultarAPI(dni, desde, hasta);
+}
+
+// ── FILTRAR POR FECHAS ──────────────────────────────────────
+function filtrar() {
+  var desde = document.getElementById("fecha-desde").value;
+  var hasta = document.getElementById("fecha-hasta").value;
+  if (!desde || !hasta) { alert("Seleccione ambas fechas"); return; }
+  if (desde > hasta)    { alert("La fecha inicial no puede ser mayor a la final"); return; }
+  mostrarPantalla("loading");
+  consultarAPI(dniActual, desde, hasta);
+}
+
+// ── LLAMADA AL APPS SCRIPT ──────────────────────────────────
+function consultarAPI(dni, desde, hasta) {
+  var url = WEBAPP_URL
+    + "?action=consultarPadre"
+    + "&dni=" + encodeURIComponent(dni)
+    + "&fechaInicio=" + desde
+    + "&fechaFin="    + hasta;
+
+  fetch(url)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.ok) {
+        mostrarPantalla("login");
+        mostrarError(data.error === "DNI no encontrado"
+          ? "DNI no encontrado. Verifique el número ingresado."
+          : "Error: " + (data.error || "desconocido"));
+        return;
+      }
+      mostrarResultado(data, desde, hasta);
+    })
+    .catch(function() {
+      mostrarPantalla("login");
+      mostrarError("Error de conexión. Intente nuevamente.");
+    });
+}
+
+// ── MOSTRAR RESULTADO ───────────────────────────────────────
+function mostrarResultado(data, desde, hasta) {
+  var est = data.estudiante;
+  document.getElementById("res-nombre").textContent  = est.nombres;
+  document.getElementById("res-detalle").textContent = est.grado + " — Sección " + est.seccion;
+  document.getElementById("res-dni").textContent     = "DNI: " + est.dni;
+
+  document.getElementById("res-puntual").textContent = data.resumen.PUNTUAL;
+  document.getElementById("res-tarde").textContent   = data.resumen.TARDE;
+  document.getElementById("res-falta").textContent   = data.resumen.FALTA;
+
+  document.getElementById("fecha-desde").value = desde;
+  document.getElementById("fecha-hasta").value = hasta;
+
+  var tbody = document.getElementById("tbody");
+  tbody.innerHTML = "";
+
+  if (!data.registros || data.registros.length === 0) {
+    tbody.innerHTML = "<tr><td colspan='3' class='sin-datos'>Sin registros en este período</td></tr>";
+  } else {
+    data.registros.forEach(function(r) {
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        "<td>" + fechaVista(r.fecha) + "</td>" +
+        "<td>" + (r.hora || "---") + "</td>" +
+        "<td><span class='badge " + r.estado + "'>" + r.estado + "</span></td>";
+      tbody.appendChild(tr);
+    });
+  }
+
+  mostrarPantalla("resultado");
+}
+
+// ── UTILIDADES ──────────────────────────────────────────────
+function fechaVista(f) {
+  if (!f) return "---";
+  var p = f.split("-");
+  var meses = ["","Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  return p[2] + " " + meses[parseInt(p[1])] + " " + p[0];
+}
+
+function mostrarPantalla(cual) {
+  document.getElementById("pantalla-login").style.display     = cual === "login"     ? "block" : "none";
+  document.getElementById("pantalla-loading").style.display   = cual === "loading"   ? "block" : "none";
+  document.getElementById("pantalla-resultado").style.display = cual === "resultado" ? "block" : "none";
+}
+
+function mostrarError(msg) {
+  var el = document.getElementById("error-msg");
+  el.textContent = msg;
+  el.style.display = "block";
+}
+
+function ocultarError() {
+  document.getElementById("error-msg").style.display = "none";
+}
+
+function nuevaConsulta() {
+  dniActual = null;
+  document.getElementById("input-dni").value = "";
+  ocultarError();
+  mostrarPantalla("login");
+}
+</script>
+</body>
+</html>
